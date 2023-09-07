@@ -104,7 +104,7 @@ final class Configuration implements ConfigurationInterface
                                     },
                                     'native_request_header' => static function (array $with): void {
                                         if ('' === (string)$with['name']) {
-                                            throw new InvalidArgumentException('"name" must be provided.');
+                                            throw new \InvalidArgumentException('"name" must be provided.');
                                         }
                                     },
                                     'native_request_query' => static function (array $with): void {
