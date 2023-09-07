@@ -48,25 +48,25 @@ if ($featureChecker->isEnabled('new_feature')) {
 Available strategies
 --------------------
 
-**AffirmativeStrategy** TODO
+**AffirmativeStrategy** : Takes a list of `StrategyInterface` and stops at the first `Grant`.
 
-**DateStrategy** TODO
+**DateStrategy** : Grant if current date is after the `$from` and before the `$until` ones.
 
-**DenyStrategy** TODO
+**DenyStrategy** : Always Denies.
 
-**EnvStrategy** TODO
+**EnvStrategy** : Will look for a truthy value in the given `$name` env variable.
 
-**GrantStrategy** TODO
+**GrantStrategy** : Always Grants.
 
-**NotStrategy** TODO
+**NotStrategy** : Takes a `StrategyInterface` and inverts its returned value (except if abstained).
 
-**PriorityStrategy** TODO
+**PriorityStrategy** : Takes a list of `StrategyInterface` and stops at the first non-abstain (either `Grant` or `Deny`).
 
 **RandomStrategy** TODO
 
-**RequestHeaderStrategy** TODO
+**RequestHeaderStrategy** : Will look for a truthy value in the given `$name` header.
 
-**RequestQueryStrategy** TODO
+**RequestQueryStrategy** : Will look for a truthy value in the given `$name` query string parameter.
 
 Resources
 ---------
