@@ -1,25 +1,20 @@
 # FeatureToggle Component
 
-## Todo
-
-- [ ] What is a feature Flag
-
-- [ ] When is it needed ?
-
-- [ ] What it is not (security)
-
-- [ ] Martin Fowler article
-
-- [x] Add screenshots (profiler)
-
-- [ ] Examples as a standalone component and as a bundle (see #1)
-
-- [ ] Fix CHANGELOGs & READMEs (see #1)
-
 ## Introduction
 
 There is no simple way (yet) to enable part of the source to be executed depending on certain context.
 This PR tries to solve this issue by integrating some easy way to check is this or that feature should be enabled.
+
+First check out (Martin Fowler's article)[https://martinfowler.com/articles/feature-toggles.html#De-couplingDecisionPointsFromDecisionLogic] abot different use cases for feature toggling.
+He categorize feature toggling like this :
+
+- Experiment: show a beta version of your website to users who subscribed to.
+
+- Release: deploy a new version of your code but keep the old one to compare them easily and rollback quickly if needed or control when a feature is released.
+
+- Permission: grant access to a feature for paid accounts using the Security component.
+
+- Ops: remove access to a consuming feature if server ressources are low (a k.a. kill switch). During Black Friday for example it is common to deactivate certain features for Ops because the load will be on other pages.
 
 There are already some libraries / bundles out there but they either lack extensibility or are locked in to a SAAS tool (Unleash, Gitlab (which uses Unleash), ...).
 
