@@ -5,7 +5,7 @@
 There is no simple way (yet) to enable part of the source to be executed depending on certain context.
 This PR tries to solve this issue by integrating some easy way to check is this or that feature should be enabled.
 
-First check out (Martin Fowler's article)[https://martinfowler.com/articles/feature-toggles.html#De-couplingDecisionPointsFromDecisionLogic] abot different use cases for feature toggling.
+First check out (Martin Fowler's article)[https://martinfowler.com/articles/feature-toggles.html#De-couplingDecisionPointsFromDecisionLogic] about different use cases for feature toggling.
 He categorize feature toggling like this :
 
 - Experiment: show a beta version of your website to users who subscribed to.
