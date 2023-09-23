@@ -41,7 +41,6 @@ use Symfony\Component\VarDumper\Cloner\Data;
  * }
  *
  * @property Data|array{
- *     features: array<string, FeatureType>,
  *     toggles: array<string, ToggleType>,
  * } $data
  */
@@ -53,26 +52,15 @@ final class FeatureCheckerDataCollector extends DataCollector implements LateDat
     /** @var \SplStack<string> */
     private \SplStack $currentCompute;
 
-    public function __construct(
-        private readonly FeatureCollection $featureCollection,
-    ) {
-        $this->data = ['features' => [], 'toggles' => []];
+    public function __construct()
+    {
+        $this->data = ['toggles' => []];
         $this->currentToggle = new \SplStack();
         $this->currentCompute = new \SplStack();
     }
 
     public function collect(Request $request, Response $response, \Throwable $exception = null): void
     {
-        foreach ($this->featureCollection as $feature) {
-            $strategy = (\Closure::bind(fn (): StrategyInterface => $this->strategy, $feature, Feature::class))();
-            $default = (\Closure::bind(fn (): bool => $this->default, $feature, Feature::class))();
-
-            $this->data['features'][$feature->getName()] = [
-                'default' => $default,
-                'description' => $feature->getDescription(),
-                'strategy' => $strategy,
-            ];
-        }
     }
 
     public function collectIsEnabledStart(string $featureName): void
@@ -128,7 +116,6 @@ final class FeatureCheckerDataCollector extends DataCollector implements LateDat
     public function reset(): void
     {
         $this->data = [
-            'features' => [],
             'toggles' => [],
         ];
     }
@@ -139,15 +126,7 @@ final class FeatureCheckerDataCollector extends DataCollector implements LateDat
     }
 
     /**
-     * @phpstan-return list<FeatureType>|Data
-     */
-    public function getFeatures(): array|Data
-    {
-        return $this->data['features'];
-    }
-
-    /**
-     * @phpstan-return list<ToggleType>|Data
+     * @return list<ToggleType>|Data
      */
     public function getToggles(): array|Data
     {
