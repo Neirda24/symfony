@@ -14,6 +14,7 @@ namespace Symfony\Bundle\FeatureToggleBundle\DependencyInjection;
 use Symfony\Bundle\FeatureToggleBundle\Strategy\CustomStrategy;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ChildDefinition;
+use Symfony\Component\DependencyInjection\Compiler\ServiceLocatorTagPass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
@@ -63,21 +64,19 @@ final class FeatureToggleExtension extends Extension
     private function loadFeatures(ContainerBuilder $container, array $config): void
     {
         $features = [];
+        $providerLocatorMap = [];
         foreach ($config['features'] as $featureName => $featureConfig) {
-            $definition = new Definition(Feature::class, [
-                '$name' => $featureName,
-                '$description' => $featureConfig['description'],
-                '$default' => $featureConfig['default'],
-                '$strategy' => new Reference($featureConfig['strategy']),
-            ]);
-            $container->setDefinition($featureName, $definition);
-
-            $features[] = new Reference($featureName);
+            $features[$featureName] = [
+                'description' => $featureConfig['description'],
+                'default' => $featureConfig['default'],
+            ];
+            $providerLocatorMap[$featureName] = new Reference($featureConfig['strategy']);
         }
 
-        $container->getDefinition('feature_toggle.provider.in_memory')
+        $container->getDefinition('feature_toggle.provider.lazy_in_memory')
             ->setArguments([
                 '$features' => $features,
+                '$providerLocator' => ServiceLocatorTagPass::register($container, $providerLocatorMap),
             ])
         ;
     }

@@ -14,7 +14,6 @@ namespace Symfony\Bundle\FeatureToggleBundle\DependencyInjection\CompilerPass;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\Compiler\PriorityTaggedServiceTrait;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\FeatureToggle\Provider\ProviderInterface;
 
 final class FeatureCollectionPass implements CompilerPassInterface
