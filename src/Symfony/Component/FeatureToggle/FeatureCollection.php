@@ -11,16 +11,15 @@
 
 namespace Symfony\Component\FeatureToggle;
 
+use AppendIterator;
+use ArrayIterator;
 use Psr\Container\ContainerInterface;
 use Symfony\Component\FeatureToggle\Provider\InMemoryProvider;
 use Symfony\Component\FeatureToggle\Provider\ProviderInterface;
 use function array_key_exists;
 use function array_map;
 use function array_merge;
-use function array_reduce;
-use function array_unshift;
 use function is_array;
-use function iterator_to_array;
 
 /** @implements \IteratorAggregate<int, Feature> */
 final class FeatureCollection implements ContainerInterface, \IteratorAggregate
@@ -28,7 +27,10 @@ final class FeatureCollection implements ContainerInterface, \IteratorAggregate
     /** @var array<string, Feature> */
     private array $features = [];
 
-    private iterable $providers;
+    /**
+     * @var AppendIterator<int, ProviderInterface>
+     */
+    private AppendIterator $providers;
 
     /**
      * @param list<Feature> $features
@@ -36,10 +38,11 @@ final class FeatureCollection implements ContainerInterface, \IteratorAggregate
      */
     public function __construct(array $features, iterable $providers = [])
     {
-        $this->providers = $providers;
+        $this->providers = new AppendIterator();
         if ([] !== $features) {
-            array_unshift($this->providers, new InMemoryProvider($features));
+            $this->providers->append(new ArrayIterator([new InMemoryProvider($features)]));
         }
+        $this->providers->append(is_array($providers) ? new ArrayIterator($providers) : $providers);
     }
 
     private function findFeature(string $featureName): ?Feature
@@ -77,16 +80,13 @@ final class FeatureCollection implements ContainerInterface, \IteratorAggregate
      */
     public function getIterator(): \Traversable
     {
-        $providers = is_array($this->providers) === true ? $this->providers : iterator_to_array($this->providers);
+        /** @var list<list<Feature>> $featuresStackedPerProvider */
+        $featuresStackedPerProvider = [];
 
-        $features = array_merge(...array_reduce($providers, static function(array $list, ProviderInterface $provider): array {
-            $featureNames = $provider->names();
+        foreach ($this->providers as $provider) {
+            $featuresStackedPerProvider[] = array_map($provider->get(...), $provider->names());
+        }
 
-            $list[] = array_map($provider->get(...), $featureNames);
-
-            return $list;
-        }, []));
-
-        return new \ArrayIterator(array_values($features));
+        return new \ArrayIterator(array_merge(...$featuresStackedPerProvider));
     }
 }

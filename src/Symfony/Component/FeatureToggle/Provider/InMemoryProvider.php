@@ -18,7 +18,7 @@ use function array_reduce;
 final class InMemoryProvider implements ProviderInterface
 {
     /**
-     * @var list<Feature> $features
+     * @var array<string, Feature> $features
      */
     private readonly array $features;
 
