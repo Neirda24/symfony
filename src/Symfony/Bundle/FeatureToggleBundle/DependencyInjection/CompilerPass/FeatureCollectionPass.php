@@ -24,18 +24,5 @@ final class FeatureCollectionPass implements CompilerPassInterface
     public function process(ContainerBuilder $container): void
     {
         $container->registerForAutoconfiguration(ProviderInterface::class)->addTag('feature_toggle.feature_provider');
-
-        $collection = $container->getDefinition('feature_toggle.feature_collection');
-
-        foreach ($this->findAndSortTaggedServices('feature_toggle.feature_provider', $container) as $provider) {
-            $collectionDefinition = (new Definition(\Closure::class))
-                ->setFactory([\Closure::class, 'fromCallable'])
-                ->setArguments([[$provider, 'provide']])
-            ;
-
-            $collection
-                ->addMethodCall('withFeatures', [$collectionDefinition])
-            ;
-        }
     }
 }

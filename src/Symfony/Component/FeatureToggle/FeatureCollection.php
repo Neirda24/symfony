@@ -12,9 +12,15 @@
 namespace Symfony\Component\FeatureToggle;
 
 use Psr\Container\ContainerInterface;
+use Symfony\Component\FeatureToggle\Provider\InMemoryProvider;
+use Symfony\Component\FeatureToggle\Provider\ProviderInterface;
 use function array_key_exists;
-use function array_shift;
-use function is_callable;
+use function array_map;
+use function array_merge;
+use function array_reduce;
+use function array_unshift;
+use function is_array;
+use function iterator_to_array;
 
 /** @implements \IteratorAggregate<int, Feature> */
 final class FeatureCollection implements ContainerInterface, \IteratorAggregate
@@ -22,33 +28,18 @@ final class FeatureCollection implements ContainerInterface, \IteratorAggregate
     /** @var array<string, Feature> */
     private array $features = [];
 
-    /** @var array<iterable<Feature>|(\Closure(): iterable<Feature>)> */
-    private array $featureProviders = [];
+    private iterable $providers;
 
     /**
-     * @param iterable<Feature> $features
+     * @param list<Feature> $features
+     * @param iterable<ProviderInterface> $providers
      */
-    public function __construct(iterable $features)
+    public function __construct(array $features, iterable $providers = [])
     {
-        $this->append($features);
-    }
-
-    /**
-     * @param iterable<Feature>|(\Closure(): iterable<Feature>) $features
-     */
-    private function append(iterable|\Closure $features): void
-    {
-        $this->featureProviders[] = $features;
-    }
-
-    /**
-     * @param iterable<Feature>|(\Closure(): iterable<Feature>) $features
-     */
-    public function withFeatures(iterable|\Closure $features): self
-    {
-        $this->append($features);
-
-        return $this;
+        $this->providers = $providers;
+        if ([] !== $features) {
+            array_unshift($this->providers, new InMemoryProvider($features));
+        }
     }
 
     private function findFeature(string $featureName): ?Feature
@@ -57,17 +48,11 @@ final class FeatureCollection implements ContainerInterface, \IteratorAggregate
             return $this->features[$featureName];
         }
 
-        while (($featureProvider = array_shift($this->featureProviders)) !== null) {
-            if (is_callable($featureProvider)) {
-                $featureProvider = $featureProvider();
-            }
-
-            foreach ($featureProvider as $feature) {
+        foreach ($this->providers as $provider) {
+            if (($feature = $provider->get($featureName)) !== null) {
                 $this->features[$feature->getName()] = $feature;
-            }
 
-            if (array_key_exists($featureName, $this->features)) {
-                return $this->features[$featureName];
+                return $feature;
             }
         }
 
@@ -92,8 +77,16 @@ final class FeatureCollection implements ContainerInterface, \IteratorAggregate
      */
     public function getIterator(): \Traversable
     {
-        $this->findFeature('');
+        $providers = is_array($this->providers) === true ? $this->providers : iterator_to_array($this->providers);
 
-        return new \ArrayIterator(array_values($this->features));
+        $features = array_merge(...array_reduce($providers, static function(array $list, ProviderInterface $provider): array {
+            $featureNames = $provider->names();
+
+            $list[] = array_map($provider->get(...), $featureNames);
+
+            return $list;
+        }, []));
+
+        return new \ArrayIterator(array_values($features));
     }
 }

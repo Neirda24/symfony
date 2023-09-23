@@ -52,44 +52,6 @@ final class FeatureCollectionTest extends TestCase
         self::assertTrue(is_a(FeatureCollection::class, ContainerInterface::class, true));
     }
 
-    public function testEnsureItIsMergeableWithDifferentTypesOfIterable(): void
-    {
-        $featureCollection = new FeatureCollection([
-            new Feature(
-                name: 'fake-1',
-                description: 'Fake description 1',
-                default: true,
-                strategy: new GrantStrategy()
-            ),
-            new Feature(
-                name: 'fake-2',
-                description: 'Fake description 2',
-                default: true,
-                strategy: new GrantStrategy()
-            ),
-        ]);
-
-        $featureCollection->withFeatures(function (): \Generator {
-            yield new Feature(
-                name: 'fake-3',
-                description: 'Fake description 3',
-                default: true,
-                strategy: new GrantStrategy()
-            );
-        });
-
-        self::assertCount(3, $featureCollection);
-
-        $featureCollection->withFeatures([new Feature(
-            name: 'fake-4',
-            description: 'Fake description 4',
-            default: true,
-            strategy: new GrantStrategy()
-        )]);
-
-        self::assertCount(4, $featureCollection);
-    }
-
     public function testItCanFindTheFeature(): void
     {
         $featureFake1 = new Feature(
