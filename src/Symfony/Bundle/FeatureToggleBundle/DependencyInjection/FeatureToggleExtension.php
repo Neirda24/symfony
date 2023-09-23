@@ -20,6 +20,7 @@ use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\FeatureToggle\Feature;
+use Symfony\Component\FeatureToggle\Provider\ProviderInterface;
 use Symfony\Component\FeatureToggle\Strategy\StrategyInterface;
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
 use Symfony\Component\Routing\Router;
@@ -32,6 +33,10 @@ final class FeatureToggleExtension extends Extension
 {
     public function load(array $configs, ContainerBuilder $container): void
     {
+        $container->registerForAutoconfiguration(ProviderInterface::class)
+            ->addTag('feature_toggle.feature_provider')
+        ;
+
         /** @var ConfigurationType $config */
         $config = $this->processConfiguration(new Configuration(), $configs);
 
