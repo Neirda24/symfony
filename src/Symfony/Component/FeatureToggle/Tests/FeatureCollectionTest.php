@@ -28,7 +28,7 @@ final class FeatureCollectionTest extends TestCase
 {
     public function testEnsureItIsIterable(): void
     {
-        $featureCollection = new FeatureCollection([
+        $featureCollection = FeatureCollection::withFeatures([
             new Feature(
                 name: 'fake-1',
                 description: 'Fake description 1',
@@ -68,7 +68,7 @@ final class FeatureCollectionTest extends TestCase
             strategy: new GrantStrategy()
         );
 
-        $featureCollection = new FeatureCollection([$featureFake1, $featureFake2]);
+        $featureCollection = FeatureCollection::withFeatures([$featureFake1, $featureFake2]);
 
         self::assertTrue($featureCollection->has('fake-1'));
         self::assertSame($featureFake1, $featureCollection->get('fake-1'));
@@ -79,7 +79,7 @@ final class FeatureCollectionTest extends TestCase
 
     public function testItThrowsWhenFeatureNotFound(): void
     {
-        $featureCollection = new FeatureCollection([]);
+        $featureCollection = FeatureCollection::withFeatures([]);
 
         self::assertFalse($featureCollection->has('not-found-1'));
 

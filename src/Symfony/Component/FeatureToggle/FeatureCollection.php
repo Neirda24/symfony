@@ -11,7 +11,6 @@
 
 namespace Symfony\Component\FeatureToggle;
 
-use AppendIterator;
 use ArrayIterator;
 use Psr\Container\ContainerInterface;
 use Symfony\Component\FeatureToggle\Provider\InMemoryProvider;
@@ -28,21 +27,24 @@ final class FeatureCollection implements ContainerInterface, \IteratorAggregate
     private array $features = [];
 
     /**
-     * @var AppendIterator<int, ProviderInterface>
+     * @var iterable<int, ProviderInterface>
      */
-    private AppendIterator $providers;
+    private iterable $providers;
+
+    /**
+     * @param iterable<ProviderInterface> $providers
+     */
+    public function __construct(iterable $providers = [])
+    {
+        $this->providers = is_array($providers) ? new ArrayIterator($providers) : $providers;
+    }
 
     /**
      * @param list<Feature> $features
-     * @param iterable<ProviderInterface> $providers
      */
-    public function __construct(array $features, iterable $providers = [])
+    public static function withFeatures(array $features): self
     {
-        $this->providers = new AppendIterator();
-        if ([] !== $features) {
-            $this->providers->append(new ArrayIterator([new InMemoryProvider($features)]));
-        }
-        $this->providers->append(is_array($providers) ? new ArrayIterator($providers) : $providers);
+        return new self([new InMemoryProvider($features)]);
     }
 
     private function findFeature(string $featureName): ?Feature
