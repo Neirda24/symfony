@@ -25,7 +25,7 @@ use Symfony\Component\FeatureToggle\FeatureChecker;
 use Symfony\Component\FeatureToggle\FeatureCollection;
 use Symfony\Component\FeatureToggle\Strategy\RequestQueryStrategy;
 
-$features = new FeatureCollection([
+$features = FeatureCollection::withFeatures([
     new Feature(
         name: 'new_feature',
         description: 'My new feature',
