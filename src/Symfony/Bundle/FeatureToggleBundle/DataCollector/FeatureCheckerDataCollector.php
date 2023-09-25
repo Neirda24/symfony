@@ -11,9 +11,6 @@
 
 namespace Symfony\Bundle\FeatureToggleBundle\DataCollector;
 
-use Symfony\Component\FeatureToggle\Feature;
-use Symfony\Component\FeatureToggle\FeatureCollection;
-use Symfony\Component\FeatureToggle\Strategy\StrategyInterface;
 use Symfony\Component\FeatureToggle\StrategyResult;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,25 +20,17 @@ use Symfony\Component\VarDumper\Caster\ClassStub;
 use Symfony\Component\VarDumper\Cloner\Data;
 
 /**
- * @phpstan-type FeatureType array{
- *     default: bool,
- *     description: string,
- *     strategy: StrategyInterface,
- * }
- * @phpstan-type ToggleType array{
- *     feature: string,
- *     result: bool|null,
- *     computes: array<string, ComputeType>,
- * }
- * @phpstan-type ComputeType array{
- *     strategyId: string,
- *     strategyClass: string,
- *     level: int,
- *     result: StrategyResult|null,
- * }
- *
  * @property Data|array{
- *     toggles: array<string, ToggleType>,
+ *     toggles: array<string, array{
+ *         feature: string,
+ *         result: bool|null,
+ *         computes: array<string, array{
+ *             strategyId: string,
+ *             strategyClass: string,
+ *             level: int,
+ *             result: StrategyResult|null,
+ *         }>,
+ *     }>,
  * } $data
  */
 final class FeatureCheckerDataCollector extends DataCollector implements LateDataCollectorInterface
@@ -125,9 +114,6 @@ final class FeatureCheckerDataCollector extends DataCollector implements LateDat
         $this->data = $this->cloneVar($this->data);
     }
 
-    /**
-     * @return list<ToggleType>|Data
-     */
     public function getToggles(): array|Data
     {
         return $this->data['toggles'];
