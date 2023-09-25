@@ -25,12 +25,6 @@ final class FeatureChecker implements FeatureCheckerInterface
             return $this->whenNotFound;
         }
 
-        $feature = $this->features->get($featureName);
-
-        return match($feature->getStrategy()->compute()) {
-            StrategyResult::Grant => true,
-            StrategyResult::Deny => false,
-            StrategyResult::Abstain => $feature->getDefault(),
-        };
+        return $this->features->get($featureName)->isEnabled();
     }
 }

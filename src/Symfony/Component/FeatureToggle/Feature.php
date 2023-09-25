@@ -33,13 +33,12 @@ final class Feature
         return $this->description;
     }
 
-    public function getDefault(): bool
+    public function isEnabled(): bool
     {
-        return $this->default;
-    }
-
-    public function getStrategy(): StrategyInterface
-    {
-        return $this->strategy;
+        return match($this->strategy->compute()) {
+            StrategyResult::Grant => true,
+            StrategyResult::Deny => false,
+            StrategyResult::Abstain => $this->default,
+        };
     }
 }
