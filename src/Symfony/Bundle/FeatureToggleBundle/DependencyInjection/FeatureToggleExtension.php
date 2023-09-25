@@ -11,6 +11,7 @@
 
 namespace Symfony\Bundle\FeatureToggleBundle\DependencyInjection;
 
+use Closure;
 use Symfony\Bundle\FeatureToggleBundle\Strategy\CustomStrategy;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ChildDefinition;
@@ -71,17 +72,32 @@ final class FeatureToggleExtension extends Extension
         $features = [];
         $providerLocatorMap = [];
         foreach ($config['features'] as $featureName => $featureConfig) {
-            $features[$featureName] = [
+            $featureConfigArray = [
                 'description' => $featureConfig['description'],
                 'default' => $featureConfig['default'],
             ];
-            $providerLocatorMap[$featureName] = new Reference($featureConfig['strategy']);
+
+            $stratReference = new Reference($featureConfig['strategy']);
+
+            $features[$featureName] = $featureConfigArray;
+            $providerLocatorMap[$featureName] = $stratReference;
+        }
+
+        $providerLocator = ServiceLocatorTagPass::register($container, $providerLocatorMap);
+
+        $featureLocatorMap = [];
+
+        foreach ($features as $featureName => $featureConfig) {
+            $featureLocatorMap[$featureName] = $featureConfig + [
+                'strategy' => (new Definition(\Closure::class))
+                        ->setFactory([Closure::class, 'fromCallable'])
+                        ->setArguments([$providerLocator, 'get']),
+            ];
         }
 
         $container->getDefinition('feature_toggle.provider.lazy_in_memory')
             ->setArguments([
-                '$features' => $features,
-                '$providerLocator' => ServiceLocatorTagPass::register($container, $providerLocatorMap),
+                '$providerLocator' => ServiceLocatorTagPass::register($container, $featureLocatorMap),
             ])
         ;
     }

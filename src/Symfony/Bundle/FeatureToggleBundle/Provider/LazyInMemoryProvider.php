@@ -4,19 +4,19 @@ declare(strict_types=1);
 
 namespace Symfony\Bundle\FeatureToggleBundle\Provider;
 
+use Closure;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\FeatureToggle\Feature;
 use Symfony\Component\FeatureToggle\Provider\ProviderInterface;
+use Symfony\Component\FeatureToggle\Strategy\StrategyInterface;
 use function array_keys;
 
 final class LazyInMemoryProvider implements ProviderInterface
 {
     /**
-     * @param array<string, array{description: string, default: bool}> $features
-     * @param ServiceLocator $providerLocator
+     * @param ServiceLocator<array{description: string, default: bool, strategy: (Closure(): StrategyInterface)}> $providerLocator
      */
     public function __construct(
-        private readonly array $features,
         private readonly ServiceLocator $providerLocator,
     ) {
     }
@@ -27,16 +27,18 @@ final class LazyInMemoryProvider implements ProviderInterface
             return null;
         }
 
+        $featureConfig = $this->providerLocator->get($featureName);
+
         return new Feature(
             $featureName,
-            $this->features[$featureName]['description'],
-            $this->features[$featureName]['default'],
-            $this->providerLocator->get($featureName),
+            $featureConfig['description'],
+            $featureConfig['default'],
+            $featureConfig['strategy']($featureName),
         );
     }
 
     public function names(): array
     {
-        return array_keys($this->features);
+        return array_keys($this->providerLocator->getProvidedServices());
     }
 }
