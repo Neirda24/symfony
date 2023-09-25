@@ -19,7 +19,6 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
-use Symfony\Component\FeatureToggle\Feature;
 use Symfony\Component\FeatureToggle\Provider\ProviderInterface;
 use Symfony\Component\FeatureToggle\Strategy\StrategyInterface;
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
@@ -59,9 +58,6 @@ final class FeatureToggleExtension extends Extension
         }
     }
 
-    /**
-     * @param ConfigurationType $config
-     */
     private function loadFeatures(ContainerBuilder $container, array $config): void
     {
         $features = [];
@@ -82,9 +78,6 @@ final class FeatureToggleExtension extends Extension
         ;
     }
 
-    /**
-     * @param ConfigurationType $config
-     */
     private function loadStrategies(ContainerBuilder $container, array $config): void
     {
         $container->registerForAutoconfiguration(StrategyInterface::class)
