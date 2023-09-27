@@ -14,12 +14,14 @@ namespace Symfony\Bundle\FeatureToggleBundle\DependencyInjection;
 use Closure;
 use Symfony\Bundle\FeatureToggleBundle\Strategy\CustomStrategy;
 use Symfony\Component\Config\FileLocator;
+use Symfony\Component\DependencyInjection\Argument\ServiceClosureArgument;
 use Symfony\Component\DependencyInjection\ChildDefinition;
 use Symfony\Component\DependencyInjection\Compiler\ServiceLocatorTagPass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
+use Symfony\Component\FeatureToggle\Feature;
 use Symfony\Component\FeatureToggle\Provider\ProviderInterface;
 use Symfony\Component\FeatureToggle\Strategy\StrategyInterface;
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
@@ -62,35 +64,20 @@ final class FeatureToggleExtension extends Extension
     private function loadFeatures(ContainerBuilder $container, array $config): void
     {
         $features = [];
-        $providerLocatorMap = [];
         foreach ($config['features'] as $featureName => $featureConfig) {
-            $featureConfigArray = [
-                'description' => $featureConfig['description'],
-                'default' => $featureConfig['default'],
-            ];
-
-            $stratReference = new Reference($featureConfig['strategy']);
-
-            $features[$featureName] = $featureConfigArray;
-            $providerLocatorMap[$featureName] = $stratReference;
-        }
-
-        $providerLocator = ServiceLocatorTagPass::register($container, $providerLocatorMap);
-
-        $featureLocatorMap = [];
-
-        foreach ($features as $featureName => $featureConfig) {
-            $featureLocatorMap[$featureName] = $featureConfig + [
-                'strategy' => (new Definition(\Closure::class))
-                        ->setFactory([Closure::class, 'fromCallable'])
-                        ->setArguments([$providerLocator, 'get']),
-            ];
+            $features[$featureName] = new ServiceClosureArgument((new Definition(Feature::class))
+                ->setShared(false)
+                ->setArguments([
+                    $featureName,
+                    $featureConfig['description'],
+                    $featureConfig['default'],
+                    new Reference($featureConfig['strategy']),
+                ]))
+            ;
         }
 
         $container->getDefinition('feature_toggle.provider.lazy_in_memory')
-            ->setArguments([
-                '$providerLocator' => ServiceLocatorTagPass::register($container, $featureLocatorMap),
-            ])
+            ->setArgument('$features', $features)
         ;
     }
 
