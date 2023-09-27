@@ -26,7 +26,7 @@ use Symfony\Component\FeatureToggle\Strategy\GrantStrategy;
  */
 final class FeatureCollectionTest extends TestCase
 {
-    public function testEnsureItIsIterable(): void
+    public function testEnsureItListFeatureNames(): void
     {
         $featureCollection = FeatureCollection::withFeatures([
             new Feature(
@@ -43,8 +43,9 @@ final class FeatureCollectionTest extends TestCase
             ),
         ]);
 
-        self::assertIsIterable($featureCollection);
-        self::assertCount(2, $featureCollection);
+        self::assertIsIterable($featureCollection->names());
+        self::assertCount(2, $featureCollection->names());
+        self::assertSame(['fake-1', 'fake-2'], $featureCollection->names());
     }
 
     public function testEnsureItImplementsContainerInterface(): void

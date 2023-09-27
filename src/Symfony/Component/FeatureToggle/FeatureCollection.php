@@ -11,24 +11,18 @@
 
 namespace Symfony\Component\FeatureToggle;
 
-use ArrayIterator;
 use Psr\Container\ContainerInterface;
 use Symfony\Component\FeatureToggle\Provider\InMemoryProvider;
 use Symfony\Component\FeatureToggle\Provider\ProviderInterface;
 use function array_key_exists;
-use function array_map;
 use function array_merge;
-use function is_array;
 
-/** @implements \IteratorAggregate<int, Feature> */
-final class FeatureCollection implements ContainerInterface, \IteratorAggregate
+final class FeatureCollection implements ContainerInterface
 {
     /** @var array<string, Feature> */
     private array $features = [];
 
-    /**
-     * @var iterable<int, ProviderInterface>
-     */
+    /** @var iterable<int, ProviderInterface> */
     private iterable $providers;
 
     /**
@@ -36,7 +30,7 @@ final class FeatureCollection implements ContainerInterface, \IteratorAggregate
      */
     public function __construct(iterable $providers = [])
     {
-        $this->providers = is_array($providers) ? new ArrayIterator($providers) : $providers;
+        $this->providers = $providers;
     }
 
     /**
@@ -78,17 +72,17 @@ final class FeatureCollection implements ContainerInterface, \IteratorAggregate
     }
 
     /**
-     * @return \Traversable<int, Feature>
+     * @return list<string>
      */
-    public function getIterator(): \Traversable
+    public function names(): array
     {
-        /** @var list<list<Feature>> $featuresStackedPerProvider */
-        $featuresStackedPerProvider = [];
+        /** @var list<list<string>> $namesStackedPerProvider */
+        $namesStackedPerProvider = [];
 
         foreach ($this->providers as $provider) {
-            $featuresStackedPerProvider[] = array_map($provider->get(...), $provider->names());
+            $namesStackedPerProvider[] = $provider->names();
         }
 
-        return new \ArrayIterator(array_merge(...$featuresStackedPerProvider));
+        return array_merge(...$namesStackedPerProvider);
     }
 }
