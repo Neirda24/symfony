@@ -11,7 +11,7 @@
 
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
-use Symfony\Bundle\FeatureToggleBundle\Provider\LazyInMemoryProvider;
+use Symfony\Component\FeatureToggle\Provider\LazyInMemoryProvider;
 
 return static function (ContainerConfigurator $container) {
     $services = $container->services();
@@ -19,7 +19,6 @@ return static function (ContainerConfigurator $container) {
     $services->set('feature_toggle.provider.lazy_in_memory', LazyInMemoryProvider::class)
         ->args([
             '$features' => abstract_arg('Defined in FeatureToggleExtension'),
-            '$providerLocator' => abstract_arg('Defined in FeatureToggleExtension'),
         ])
         ->tag('feature_toggle.feature_provider', ['priority' => 16])
     ;
