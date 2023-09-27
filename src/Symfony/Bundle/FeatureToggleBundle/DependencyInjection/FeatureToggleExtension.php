@@ -11,12 +11,10 @@
 
 namespace Symfony\Bundle\FeatureToggleBundle\DependencyInjection;
 
-use Closure;
 use Symfony\Bundle\FeatureToggleBundle\Strategy\CustomStrategy;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\Argument\ServiceClosureArgument;
 use Symfony\Component\DependencyInjection\ChildDefinition;
-use Symfony\Component\DependencyInjection\Compiler\ServiceLocatorTagPass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
