@@ -20,16 +20,12 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
-use Symfony\Component\FeatureToggle\Feature;
 use Symfony\Component\FeatureToggle\Provider\ProviderInterface;
 use Symfony\Component\FeatureToggle\Strategy\StrategyInterface;
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
 use Symfony\Component\Routing\Router;
 use Twig\Environment;
 
-/**
- * @phpstan-import-type ConfigurationType from Configuration
- */
 final class FeatureToggleExtension extends Extension
 {
     public function load(array $configs, ContainerBuilder $container): void
@@ -38,7 +34,6 @@ final class FeatureToggleExtension extends Extension
             ->addTag('feature_toggle.feature_provider')
         ;
 
-        /** @var ConfigurationType $config */
         $config = $this->processConfiguration(new Configuration(), $configs);
 
         $loader = new PhpFileLoader($container, new FileLocator(\dirname(__DIR__).'/Resources/config'));
@@ -64,9 +59,6 @@ final class FeatureToggleExtension extends Extension
         }
     }
 
-    /**
-     * @param ConfigurationType $config
-     */
     private function loadFeatures(ContainerBuilder $container, array $config): void
     {
         $features = [];
@@ -102,9 +94,6 @@ final class FeatureToggleExtension extends Extension
         ;
     }
 
-    /**
-     * @param ConfigurationType $config
-     */
     private function loadStrategies(ContainerBuilder $container, array $config): void
     {
         $container->registerForAutoconfiguration(StrategyInterface::class)
