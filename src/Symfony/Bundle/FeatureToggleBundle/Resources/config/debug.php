@@ -11,6 +11,7 @@
 
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
+use Symfony\Bundle\FeatureToggleBundle\Command\FeatureToggleDebugCommand;
 use Symfony\Bundle\FeatureToggleBundle\DataCollector\FeatureCheckerDataCollector;
 
 return static function (ContainerConfigurator $container) {
@@ -18,5 +19,11 @@ return static function (ContainerConfigurator $container) {
 
     $services->set('feature_toggle.data_collector', FeatureCheckerDataCollector::class)
         ->tag('data_collector', ['template' => '@FeatureToggle/Collector/profiler.html.twig', 'id' => 'feature_toggle'])
+    ;
+    $services->set('console.command.feature_toggle_debug', FeatureToggleDebugCommand::class)
+        ->args([
+            tagged_locator('feature_toggle.feature_provider', 'name'),
+        ])
+        ->tag('console.command')
     ;
 };
