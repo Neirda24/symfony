@@ -12,8 +12,9 @@
 namespace Symfony\Component\FeatureToggle\Strategy;
 
 use Symfony\Component\FeatureToggle\StrategyResult;
+use function iterator_to_array;
 
-final class UnanimousStrategy implements StrategyInterface
+final class UnanimousStrategy implements StrategyInterface, OuterStrategiesInterface
 {
     /**
      * @param iterable<StrategyInterface> $strategies
@@ -39,5 +40,10 @@ final class UnanimousStrategy implements StrategyInterface
         }
 
         return $result;
+    }
+
+    public function getInnerStrategies(): array
+    {
+        return iterator_to_array($this->strategies);
     }
 }
