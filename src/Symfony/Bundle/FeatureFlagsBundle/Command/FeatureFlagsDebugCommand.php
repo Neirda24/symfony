@@ -18,13 +18,11 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\FeatureFlags\Feature;
 use Symfony\Component\FeatureFlags\Provider\ProviderInterface;
 use Symfony\Component\FeatureFlags\Strategy\OuterStrategiesInterface;
 use Symfony\Component\FeatureFlags\Strategy\OuterStrategyInterface;
 use Symfony\Component\FeatureFlags\Strategy\StrategyInterface;
-use function array_keys;
 use function array_map;
 use function json_encode;
 use function str_repeat;
@@ -37,10 +35,11 @@ use function uniqid;
 #[AsCommand(name: 'debug:feature-flags', description: 'Display configured features and their provider for an application')]
 final class FeatureFlagsDebugCommand extends Command
 {
-    /** @var ServiceLocator<ProviderInterface> */
-    private ServiceLocator $featureProviders;
+    /** @var iterable<string, ProviderInterface> */
+    private iterable $featureProviders;
 
-    public function __construct(ServiceLocator $featureProviders)
+    /** @param iterable<string, ProviderInterface> $featureProviders */
+    public function __construct(iterable $featureProviders)
     {
         parent::__construct();
 
@@ -61,9 +60,7 @@ final class FeatureFlagsDebugCommand extends Command
         $io->title('Feature list grouped by their providers');
 
         $order = 0;
-        foreach (array_keys($this->featureProviders->getProvidedServices()) as $serviceName) {
-            $featureProvider = $this->featureProviders->get($serviceName);
-
+        foreach ($this->featureProviders as $serviceName => $featureProvider) {
             ++$order;
 
             $providerName = $featureProvider::class;

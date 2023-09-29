@@ -22,7 +22,7 @@ return static function (ContainerConfigurator $container) {
     ;
     $services->set('console.command.feature_flags_debug', FeatureFlagsDebugCommand::class)
         ->args([
-            tagged_locator('feature_flags.feature_provider', 'name'),
+            tagged_iterator('feature_flags.feature_provider', 'name'),
         ])
         ->tag('console.command')
     ;
