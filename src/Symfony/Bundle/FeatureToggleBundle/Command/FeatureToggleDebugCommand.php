@@ -13,7 +13,6 @@ namespace Symfony\Bundle\FeatureToggleBundle\Command;
 
 use Closure;
 use Symfony\Bundle\FeatureToggleBundle\Debug\TraceableStrategy;
-use Symfony\Bundle\FrameworkBundle\Console\Helper\DescriptorHelper;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -27,7 +26,9 @@ use Symfony\Component\FeatureToggle\Strategy\OuterStrategyInterface;
 use Symfony\Component\FeatureToggle\Strategy\StrategyInterface;
 use function array_keys;
 use function array_map;
-use function sprintf;
+use function json_encode;
+use function str_repeat;
+use function strlen;
 use function uniqid;
 
 /**
@@ -80,16 +81,15 @@ final class FeatureToggleDebugCommand extends Command
                 $featureGetDefault = Closure::bind(function (): bool {
                     return $this->default;
                 }, $feature, Feature::class);
-                $featureGetStrategy = Closure::bind(function (): StrategyInterface {
-                    return $this->strategy;
-                }, $feature, Feature::class); // TODO : get strategy tree and remove the Traceable from log
-                                              // TODO : get strategy service name
 
                 $featureGetDefault->bindTo($feature, Feature::class);
 
-                dd($this->getStrategyTreeFromFeature($feature));
-
-                $tableRows[] = [$featureName, $feature->getDescription(), $featureGetDefault(), $featureGetStrategy()::class];
+                $tableRows[] = [
+                    $featureName,
+                    $feature->getDescription(),
+                    json_encode($featureGetDefault()),
+                    $this->getStrategyTreeFromFeature($feature)
+                ];
 
                 $io->table($tableHeaders, $tableRows);
             }
@@ -98,7 +98,7 @@ final class FeatureToggleDebugCommand extends Command
         return 0;
     }
 
-    private function getStrategyTreeFromFeature(Feature $feature): array
+    private function getStrategyTreeFromFeature(Feature $feature): string
     {
         $getMainStrategy = Closure::bind(function (): StrategyInterface {
             return $this->strategy;
@@ -106,50 +106,61 @@ final class FeatureToggleDebugCommand extends Command
 
         $mainStrategy = $getMainStrategy();
 
-        return $this->getStrategyTree($mainStrategy);
+        $strategyTree = $this->getStrategyTree($mainStrategy);
+
+        return $this->convertStrategyTreeToString($strategyTree);
     }
 
     private function getStrategyTree(StrategyInterface $strategy, string|null $strategyId = null): array
     {
         $strategyId = $strategyId ?? uniqid($strategy::class);
+        $children = [];
 
         if ($strategy instanceof OuterStrategiesInterface) {
-            $result[] = [
-                'id' => $strategyId,
-                'class' => $strategy::class,
-                'children' => array_map(
-                    fn(StrategyInterface $strategyInterface): array => $this->getStrategyTree($strategyInterface),
-                    $strategy->getInnerStrategies()
-                ),
-            ];
-
-            return $result;
+            $children = array_map(
+                fn(StrategyInterface $strategyInterface): array => $this->getStrategyTree($strategyInterface),
+                $strategy->getInnerStrategies()
+            );
         } elseif ($strategy instanceof OuterStrategyInterface) {
-            if (!$strategy instanceof TraceableStrategy) {
-                $result[] = [
-                    'id' => $strategyId,
-                    'class' => $strategy::class,
-                    'children' => [$this->getStrategyTree($strategy->getInnerStrategy())],
-                ];
+            if ($strategy instanceof TraceableStrategy) {
+                $getStrategyId = Closure::bind(function (): string {
+                    return $this->strategyId;
+                }, $strategy, TraceableStrategy::class);
 
-                return $result;
+                $strategyId = $getStrategyId();
+
+                return $this->getStrategyTree($strategy->getInnerStrategy(), $strategyId);
             }
 
-            $getStrategyId = Closure::bind(function (): string {
-                return $this->strategyId;
-            }, $strategy, TraceableStrategy::class);
-
-            $strategyId = $getStrategyId();
-
-            $result[] = $this->getStrategyTree($strategy->getInnerStrategy(), $strategyId);
-
-            return $result;
-        } else {
-            return [
-                'id' => $strategyId,
-                'class' => $strategy::class,
-                'children' => [],
-            ];
+            $children = [$this->getStrategyTree($strategy->getInnerStrategy())];
         }
+
+        return [
+            'id' => $strategyId,
+            'class' => $strategy::class,
+            'children' => $children,
+        ];
+    }
+
+    private function convertStrategyTreeToString(array $strategyTree, int $indent = 0): string
+    {
+        $childIndicator = '|-> ';
+        $spaces = str_repeat(' ', $indent * strlen($childIndicator));
+
+        $prefix = '' === $spaces ? '' : "{$spaces}{$childIndicator}";
+
+        $row = $strategyTree['class'];
+
+        if ($strategyTree['class'] !== $strategyTree['id']) {
+            $row .= " ({$strategyTree['id']})";
+        }
+
+        $row .= "\n";
+
+        foreach ($strategyTree['children'] as $child) {
+            $row .= $this->convertStrategyTreeToString($child, ($indent + 1));
+        }
+
+        return "{$prefix}{$row}";
     }
 }
