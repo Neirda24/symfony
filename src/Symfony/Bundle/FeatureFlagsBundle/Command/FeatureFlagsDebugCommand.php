@@ -32,10 +32,10 @@ use function strlen;
 use function uniqid;
 
 /**
- * A console command for retrieving information about feature toggles.
+ * A console command for retrieving information about feature flags.
  */
-#[AsCommand(name: 'debug:feature-toggle', description: 'Display configured features and their provider for an application')]
-final class FeatureToggleDebugCommand extends Command
+#[AsCommand(name: 'debug:feature-flags', description: 'Display configured features and their provider for an application')]
+final class FeatureFlagsDebugCommand extends Command
 {
     /** @var ServiceLocator<ProviderInterface> */
     private ServiceLocator $featureProviders;

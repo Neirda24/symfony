@@ -11,7 +11,7 @@
 
 namespace Symfony\Bundle\FeatureFlagsBundle\Strategy;
 
-use Symfony\Component\FeatureToggle\Strategy\OuterStrategyInterface;
+use Symfony\Component\FeatureFlags\Strategy\OuterStrategyInterface;
 use Symfony\Component\FeatureFlags\Strategy\StrategyInterface;
 use Symfony\Component\FeatureFlags\StrategyResult;
 

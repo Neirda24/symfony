@@ -12,7 +12,7 @@
 namespace Symfony\Bundle\FeatureFlagsBundle\Debug;
 
 use Symfony\Bundle\FeatureFlagsBundle\DataCollector\FeatureCheckerDataCollector;
-use Symfony\Component\FeatureToggle\Strategy\OuterStrategyInterface;
+use Symfony\Component\FeatureFlags\Strategy\OuterStrategyInterface;
 use Symfony\Component\FeatureFlags\Strategy\StrategyInterface;
 use Symfony\Component\FeatureFlags\StrategyResult;
 
