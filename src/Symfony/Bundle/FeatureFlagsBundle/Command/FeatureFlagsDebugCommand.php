@@ -141,7 +141,7 @@ final class FeatureFlagsDebugCommand extends Command
 
     private function convertStrategyTreeToString(array $strategyTree, int $indent = 0): string
     {
-        $childIndicator = '|-> ';
+        $childIndicator = 'L ';
         $spaces = str_repeat(' ', $indent * strlen($childIndicator));
 
         $prefix = '' === $spaces ? '' : "{$spaces}{$childIndicator}";
