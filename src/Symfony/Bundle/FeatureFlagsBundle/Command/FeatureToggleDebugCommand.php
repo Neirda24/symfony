@@ -1,0 +1,166 @@
+<?php
+
+/*
+ * This file is part of the Symfony package.
+ *
+ * (c) Fabien Potencier <fabien@symfony.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+namespace Symfony\Bundle\FeatureFlagsBundle\Command;
+
+use Closure;
+use Symfony\Bundle\FeatureFlagsBundle\Debug\TraceableStrategy;
+use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\DependencyInjection\ServiceLocator;
+use Symfony\Component\FeatureFlags\Feature;
+use Symfony\Component\FeatureFlags\Provider\ProviderInterface;
+use Symfony\Component\FeatureFlags\Strategy\OuterStrategiesInterface;
+use Symfony\Component\FeatureFlags\Strategy\OuterStrategyInterface;
+use Symfony\Component\FeatureFlags\Strategy\StrategyInterface;
+use function array_keys;
+use function array_map;
+use function json_encode;
+use function str_repeat;
+use function strlen;
+use function uniqid;
+
+/**
+ * A console command for retrieving information about feature toggles.
+ */
+#[AsCommand(name: 'debug:feature-toggle', description: 'Display configured features and their provider for an application')]
+final class FeatureToggleDebugCommand extends Command
+{
+    /** @var ServiceLocator<ProviderInterface> */
+    private ServiceLocator $featureProviders;
+
+    public function __construct(ServiceLocator $featureProviders)
+    {
+        parent::__construct();
+
+        $this->featureProviders = $featureProviders;
+    }
+
+    protected function configure(): void
+    {
+    }
+
+    /**
+     * @throws \LogicException
+     */
+    protected function execute(InputInterface $input, OutputInterface $output): int
+    {
+        $io = new SymfonyStyle($input, $output);
+
+        $io->title('Feature list grouped by their providers');
+
+        $order = 0;
+        foreach (array_keys($this->featureProviders->getProvidedServices()) as $serviceName) {
+            $featureProvider = $this->featureProviders->get($serviceName);
+
+            ++$order;
+
+            $providerName = $featureProvider::class;
+            if ($providerName !== $serviceName) {
+                $providerName .= " ({$serviceName}).";
+            }
+            $io->section("#{$order} - {$providerName}");
+
+            $tableHeaders = ['Name', 'Description', 'Default', 'Main Strategy'];
+            $tableRows = [];
+
+            foreach ($featureProvider->names() as $featureName) {
+                $feature = $featureProvider->get($featureName);
+
+                $featureGetDefault = Closure::bind(function (): bool {
+                    return $this->default;
+                }, $feature, Feature::class);
+
+                $featureGetDefault->bindTo($feature, Feature::class);
+
+                $tableRows[] = [
+                    $featureName,
+                    $feature->getDescription(),
+                    json_encode($featureGetDefault()),
+                    $this->getStrategyTreeFromFeature($feature)
+                ];
+
+                $io->table($tableHeaders, $tableRows);
+            }
+        }
+
+        return 0;
+    }
+
+    private function getStrategyTreeFromFeature(Feature $feature): string
+    {
+        $getMainStrategy = Closure::bind(function (): StrategyInterface {
+            return $this->strategy;
+        }, $feature, Feature::class);
+
+        $mainStrategy = $getMainStrategy();
+
+        $strategyTree = $this->getStrategyTree($mainStrategy);
+
+        return $this->convertStrategyTreeToString($strategyTree);
+    }
+
+    private function getStrategyTree(StrategyInterface $strategy, string|null $strategyId = null): array
+    {
+        $strategyId = $strategyId ?? uniqid($strategy::class);
+        $children = [];
+
+        if ($strategy instanceof OuterStrategiesInterface) {
+            $children = array_map(
+                fn(StrategyInterface $strategyInterface): array => $this->getStrategyTree($strategyInterface),
+                $strategy->getInnerStrategies()
+            );
+        } elseif ($strategy instanceof OuterStrategyInterface) {
+            if ($strategy instanceof TraceableStrategy) {
+                $getStrategyId = Closure::bind(function (): string {
+                    return $this->strategyId;
+                }, $strategy, TraceableStrategy::class);
+
+                $strategyId = $getStrategyId();
+
+                return $this->getStrategyTree($strategy->getInnerStrategy(), $strategyId);
+            }
+
+            $children = [$this->getStrategyTree($strategy->getInnerStrategy())];
+        }
+
+        return [
+            'id' => $strategyId,
+            'class' => $strategy::class,
+            'children' => $children,
+        ];
+    }
+
+    private function convertStrategyTreeToString(array $strategyTree, int $indent = 0): string
+    {
+        $childIndicator = '|-> ';
+        $spaces = str_repeat(' ', $indent * strlen($childIndicator));
+
+        $prefix = '' === $spaces ? '' : "{$spaces}{$childIndicator}";
+
+        $row = $strategyTree['class'];
+
+        if ($strategyTree['class'] !== $strategyTree['id']) {
+            $row .= " ({$strategyTree['id']})";
+        }
+
+        $row .= "\n";
+
+        foreach ($strategyTree['children'] as $child) {
+            $row .= $this->convertStrategyTreeToString($child, ($indent + 1));
+        }
+
+        return "{$prefix}{$row}";
+    }
+}
