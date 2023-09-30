@@ -135,7 +135,7 @@ final class FeatureFlagsDebugCommand extends Command
 
         $row = $strategyTree['class'];
 
-        if ($strategyTree['id']) {
+        if (null !== $strategyTree['id']) {
             $row .= " ({$strategyTree['id']})";
         }
 
