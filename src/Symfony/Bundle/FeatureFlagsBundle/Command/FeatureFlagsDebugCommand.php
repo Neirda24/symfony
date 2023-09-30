@@ -25,7 +25,10 @@ use Symfony\Component\FeatureFlags\Strategy\OuterStrategiesInterface;
 use Symfony\Component\FeatureFlags\Strategy\OuterStrategyInterface;
 use Symfony\Component\FeatureFlags\Strategy\StrategyInterface;
 use function array_map;
+use function array_unique;
+use function implode;
 use function json_encode;
+use function sprintf;
 use function str_repeat;
 use function strlen;
 
@@ -60,12 +63,65 @@ final class FeatureFlagsDebugCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
 
-        $this->listAllFeaturesPerProvider($io);
+        if (null === $input->getArgument('featureName')) {
+            return $this->listAllFeaturesPerProvider($io);
+        }
+
+        return $this->detailsFeature($io, $input->getArgument('featureName'));
+    }
+
+    private function detailsFeature(SymfonyStyle $io, string $debuggingFeatureName): int
+    {
+        $io->title("About '{$debuggingFeatureName}' flag");
+
+        $tableHeaders = ['Name', 'Description', 'Default', 'Provider', 'Strategy Tree'];
+        $tableRows = [];
+        $providers = [];
+        $featureNames = [];
+
+        foreach ($this->featureProviders as $serviceName => $featureProvider) {
+            $providerName = $serviceName;
+            if ($providerName !== $featureProvider::class) {
+                $providerName .= ' (' . $featureProvider::class . ').';
+            }
+            $providers[] = $providerName;
+
+            foreach ($featureProvider->names() as $featureName) {
+                $featureNames[] = $featureName;
+                if ($featureName !== $debuggingFeatureName) {
+                    continue;
+                }
+
+                $feature = $featureProvider->get($featureName);
+
+                $featureGetDefault = Closure::bind(fn(): bool => $feature->default, $feature, Feature::class);
+
+                $tableRows[] = [
+                    $featureName,
+                    $feature->getDescription(),
+                    json_encode($featureGetDefault()),
+                    $providerName,
+                    $this->getStrategyTreeFromFeature($feature)
+                ];
+
+            }
+        }
+
+        $featureNames = array_unique($featureNames);
+
+        if ([] === $tableRows) {
+            $io->warning("'{$debuggingFeatureName}' not found in any of the following providers :");
+            $io->listing($providers);
+            $io->writeln(sprintf('Did you mean one of those ? %s', implode(', ', $featureNames)));
+
+            return 1;
+        }
+        $io->horizontalTable($tableHeaders, $tableRows);
 
         return 0;
     }
 
-    private function listAllFeaturesPerProvider(SymfonyStyle $io)
+    private function listAllFeaturesPerProvider(SymfonyStyle $io): int
     {
         $io->title('Feature list grouped by their providers');
 
@@ -86,17 +142,36 @@ final class FeatureFlagsDebugCommand extends Command
                 $feature = $featureProvider->get($featureName);
 
                 $featureGetDefault = Closure::bind(fn(): bool => $feature->default, $feature, Feature::class);
+                $featureGetStrategy = Closure::bind(fn(): StrategyInterface => $feature->strategy, $feature, Feature::class);
+
+                $strategy = $featureGetStrategy();
+                $strategyClass = $strategy::class;
+                $strategyId = null;
+
+                if ($strategy instanceof TraceableStrategy) {
+                    $strategyGetId = Closure::bind(fn(): string => $strategy->strategyId, $strategy, TraceableStrategy::class);
+
+                    $strategyId = $strategyGetId();
+                    $strategyClass = $strategy->getInnerStrategy()::class;
+                }
+
+                $strategyString = $strategyClass;
+                if (null !== $strategyId) {
+                    $strategyString .= " ({$strategyId})";
+                }
 
                 $tableRows[] = [
                     $featureName,
                     $feature->getDescription(),
                     json_encode($featureGetDefault()),
-                    $this->getStrategyTreeFromFeature($feature)
+                    $strategyString
                 ];
 
             }
             $io->table($tableHeaders, $tableRows);
         }
+
+        return 0;
     }
 
     private function getStrategyTreeFromFeature(Feature $feature): string
