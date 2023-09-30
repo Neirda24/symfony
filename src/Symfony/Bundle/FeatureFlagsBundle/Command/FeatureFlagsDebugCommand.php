@@ -75,11 +75,7 @@ final class FeatureFlagsDebugCommand extends Command
             foreach ($featureProvider->names() as $featureName) {
                 $feature = $featureProvider->get($featureName);
 
-                $featureGetDefault = Closure::bind(function (): bool {
-                    return $this->default;
-                }, $feature, Feature::class);
-
-                $featureGetDefault->bindTo($feature, Feature::class);
+                $featureGetDefault = Closure::bind(fn(): bool => $feature->default, $feature, Feature::class);
 
                 $tableRows[] = [
                     $featureName,
@@ -88,8 +84,8 @@ final class FeatureFlagsDebugCommand extends Command
                     $this->getStrategyTreeFromFeature($feature)
                 ];
 
-                $io->table($tableHeaders, $tableRows);
             }
+            $io->table($tableHeaders, $tableRows);
         }
 
         return 0;
@@ -97,20 +93,15 @@ final class FeatureFlagsDebugCommand extends Command
 
     private function getStrategyTreeFromFeature(Feature $feature): string
     {
-        $getMainStrategy = Closure::bind(function (): StrategyInterface {
-            return $this->strategy;
-        }, $feature, Feature::class);
+        $featureGetStrategy = Closure::bind(fn(): StrategyInterface => $feature->strategy, $feature, Feature::class);
 
-        $mainStrategy = $getMainStrategy();
-
-        $strategyTree = $this->getStrategyTree($mainStrategy);
+        $strategyTree = $this->getStrategyTree($featureGetStrategy());
 
         return $this->convertStrategyTreeToString($strategyTree);
     }
 
     private function getStrategyTree(StrategyInterface $strategy, string|null $strategyId = null): array
     {
-        $strategyId = $strategyId ?? uniqid($strategy::class);
         $children = [];
 
         if ($strategy instanceof OuterStrategiesInterface) {
@@ -120,13 +111,9 @@ final class FeatureFlagsDebugCommand extends Command
             );
         } elseif ($strategy instanceof OuterStrategyInterface) {
             if ($strategy instanceof TraceableStrategy) {
-                $getStrategyId = Closure::bind(function (): string {
-                    return $this->strategyId;
-                }, $strategy, TraceableStrategy::class);
+                $strategyGetId = Closure::bind(fn(): string => $strategy->strategyId, $strategy, TraceableStrategy::class);
 
-                $strategyId = $getStrategyId();
-
-                return $this->getStrategyTree($strategy->getInnerStrategy(), $strategyId);
+                return $this->getStrategyTree($strategy->getInnerStrategy(), $strategyGetId());
             }
 
             $children = [$this->getStrategyTree($strategy->getInnerStrategy())];
@@ -148,7 +135,7 @@ final class FeatureFlagsDebugCommand extends Command
 
         $row = $strategyTree['class'];
 
-        if ($strategyTree['class'] !== $strategyTree['id']) {
+        if ($strategyTree['id']) {
             $row .= " ({$strategyTree['id']})";
         }
 
