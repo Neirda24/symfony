@@ -15,6 +15,7 @@ use Closure;
 use Symfony\Bundle\FeatureFlagsBundle\Debug\TraceableStrategy;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -27,7 +28,6 @@ use function array_map;
 use function json_encode;
 use function str_repeat;
 use function strlen;
-use function uniqid;
 
 /**
  * A console command for retrieving information about feature flags.
@@ -48,6 +48,9 @@ final class FeatureFlagsDebugCommand extends Command
 
     protected function configure(): void
     {
+        $this
+            ->addArgument('featureName', InputArgument::OPTIONAL, 'Feature name. If provided will display the full tree of strategies regarding that feature.')
+        ;
     }
 
     /**
@@ -57,6 +60,13 @@ final class FeatureFlagsDebugCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
 
+        $this->listAllFeaturesPerProvider($io);
+
+        return 0;
+    }
+
+    private function listAllFeaturesPerProvider(SymfonyStyle $io)
+    {
         $io->title('Feature list grouped by their providers');
 
         $order = 0;
@@ -87,8 +97,6 @@ final class FeatureFlagsDebugCommand extends Command
             }
             $io->table($tableHeaders, $tableRows);
         }
-
-        return 0;
     }
 
     private function getStrategyTreeFromFeature(Feature $feature): string
