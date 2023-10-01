@@ -24,13 +24,18 @@ use Symfony\Component\FeatureFlags\Provider\ProviderInterface;
 use Symfony\Component\FeatureFlags\Strategy\OuterStrategiesInterface;
 use Symfony\Component\FeatureFlags\Strategy\OuterStrategyInterface;
 use Symfony\Component\FeatureFlags\Strategy\StrategyInterface;
+use function array_column;
 use function array_map;
+use function array_slice;
 use function array_unique;
 use function implode;
 use function json_encode;
+use function levenshtein;
+use function min;
 use function sprintf;
 use function str_repeat;
 use function strlen;
+use function usort;
 
 /**
  * A console command for retrieving information about feature flags.
@@ -87,7 +92,11 @@ final class FeatureFlagsDebugCommand extends Command
             $providers[] = $providerName;
 
             foreach ($featureProvider->names() as $featureName) {
-                $featureNames[] = $featureName;
+                $featureNames[] = [
+                    'distance' => levenshtein($debuggingFeatureName, $featureName),
+                    'name' => $featureName,
+                ];
+
                 if ($featureName !== $debuggingFeatureName) {
                     continue;
                 }
@@ -107,12 +116,13 @@ final class FeatureFlagsDebugCommand extends Command
             }
         }
 
-        $featureNames = array_unique($featureNames);
-
         if ([] === $tableRows) {
+            usort($featureNames, static fn (array $row1, array $row2): int => $row1['distance'] <=> $row2['distance']);
+            $featureNamesGuess = array_column(array_slice($featureNames, 0, 5), 'name');
+
             $io->warning("'{$debuggingFeatureName}' not found in any of the following providers :");
             $io->listing($providers);
-            $io->writeln(sprintf('Did you mean one of those ? %s', implode(', ', $featureNames)));
+            $io->writeln(sprintf('Did you mean one of those ? %s', implode(', ', $featureNamesGuess)));
 
             return 1;
         }
@@ -187,18 +197,16 @@ final class FeatureFlagsDebugCommand extends Command
     {
         $children = [];
 
-        if ($strategy instanceof OuterStrategiesInterface) {
+        if ($strategy instanceof TraceableStrategy) {
+            $strategyGetId = Closure::bind(fn(): string => $strategy->strategyId, $strategy, TraceableStrategy::class);
+
+            return $this->getStrategyTree($strategy->getInnerStrategy(), $strategyGetId());
+        } elseif ($strategy instanceof OuterStrategiesInterface) {
             $children = array_map(
                 fn(StrategyInterface $strategyInterface): array => $this->getStrategyTree($strategyInterface),
                 $strategy->getInnerStrategies()
             );
         } elseif ($strategy instanceof OuterStrategyInterface) {
-            if ($strategy instanceof TraceableStrategy) {
-                $strategyGetId = Closure::bind(fn(): string => $strategy->strategyId, $strategy, TraceableStrategy::class);
-
-                return $this->getStrategyTree($strategy->getInnerStrategy(), $strategyGetId());
-            }
-
             $children = [$this->getStrategyTree($strategy->getInnerStrategy())];
         }
 
