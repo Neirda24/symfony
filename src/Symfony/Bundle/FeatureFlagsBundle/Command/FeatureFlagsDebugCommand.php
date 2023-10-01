@@ -27,11 +27,10 @@ use Symfony\Component\FeatureFlags\Strategy\StrategyInterface;
 use function array_column;
 use function array_map;
 use function array_slice;
-use function array_unique;
+use function chunk_split;
 use function implode;
 use function json_encode;
 use function levenshtein;
-use function min;
 use function sprintf;
 use function str_repeat;
 use function strlen;
@@ -107,7 +106,7 @@ final class FeatureFlagsDebugCommand extends Command
 
                 $tableRows[] = [
                     $featureName,
-                    $feature->getDescription(),
+                    chunk_split($feature->getDescription(), 60, "\n"),
                     json_encode($featureGetDefault()),
                     $providerName,
                     $this->getStrategyTreeFromFeature($feature)
@@ -126,7 +125,17 @@ final class FeatureFlagsDebugCommand extends Command
 
             return 1;
         }
-        $io->horizontalTable($tableHeaders, $tableRows);
+
+        $io
+            ->createTable()
+            ->setHorizontal(true)
+            ->setHeaders($tableHeaders)
+            ->setRows($tableRows)
+            ->setStyle('compact')
+            ->render()
+        ;
+
+        $io->newLine();
 
         return 0;
     }
@@ -172,7 +181,7 @@ final class FeatureFlagsDebugCommand extends Command
 
                 $tableRows[] = [
                     $featureName,
-                    $feature->getDescription(),
+                    chunk_split($feature->getDescription(), 60, "\n"),
                     json_encode($featureGetDefault()),
                     $strategyString
                 ];
