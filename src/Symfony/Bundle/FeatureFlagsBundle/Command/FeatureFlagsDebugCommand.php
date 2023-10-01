@@ -26,8 +26,10 @@ use Symfony\Component\FeatureFlags\Strategy\OuterStrategyInterface;
 use Symfony\Component\FeatureFlags\Strategy\StrategyInterface;
 use function array_column;
 use function array_map;
+use function array_shift;
 use function array_slice;
 use function chunk_split;
+use function count;
 use function implode;
 use function json_encode;
 use function levenshtein;
@@ -115,7 +117,7 @@ final class FeatureFlagsDebugCommand extends Command
             }
         }
 
-        if ([] === $tableRows) {
+        if (count($tableRows) === 0) {
             usort($featureNames, static fn (array $row1, array $row2): int => $row1['distance'] <=> $row2['distance']);
             $featureNamesGuess = array_column(array_slice($featureNames, 0, 5), 'name');
 
@@ -124,6 +126,18 @@ final class FeatureFlagsDebugCommand extends Command
             $io->writeln(sprintf('Did you mean one of those ? %s', implode(', ', $featureNamesGuess)));
 
             return 1;
+        } elseif (count($tableRows) > 1) {
+            $duplicates = array_slice($tableRows, 1);
+            $tableRows = [array_shift($tableRows)];
+
+            $duplicateWarning = sprintf('Found %d duplicates in those providers :', count($duplicates)) . "\n";
+
+            foreach ($duplicates as $duplicate) {
+                $duplicateWarning .= "  * {$duplicate[3]}\n";
+            }
+
+            $duplicateWarning .= "\nThose will probably never be used.";
+            $io->warning($duplicateWarning);
         }
 
         $io
