@@ -11,12 +11,15 @@
 
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
-use Symfony\Bundle\FeatureFlagsBundle\DataCollector\FeatureCheckerDataCollector;
+use Symfony\Bundle\FeatureFlagsBundle\Command\FeatureFlagsDebugCommand;
 
 return static function (ContainerConfigurator $container) {
     $services = $container->services();
 
-    $services->set('feature_flags.data_collector', FeatureCheckerDataCollector::class)
-        ->tag('data_collector', ['template' => '@FeatureFlags/Collector/profiler.html.twig', 'id' => 'feature_flags'])
+    $services->set('console.command.feature_flags_debug', FeatureFlagsDebugCommand::class)
+        ->args([
+            tagged_iterator('feature_flags.feature_provider', 'name'),
+        ])
+        ->tag('console.command')
     ;
 };
