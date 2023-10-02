@@ -44,13 +44,8 @@ use function usort;
 #[AsCommand(name: 'debug:feature-flags', description: 'Display configured features and their provider for an application')]
 final class FeatureFlagsDebugCommand extends Command
 {
-    private SymfonyStyle $io;
-
     /** @var iterable<string, ProviderInterface> */
     private iterable $featureProviders;
-
-    /** @var array<string, list<string>> */
-    private array $featureSources = [];
 
     /** @param iterable<string, ProviderInterface> $featureProviders */
     public function __construct(iterable $featureProviders)
@@ -73,22 +68,22 @@ final class FeatureFlagsDebugCommand extends Command
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $this->io = new SymfonyStyle($input, $output);
+        $io = new SymfonyStyle($input, $output);
 
         if (null === $input->getArgument('featureName')) {
-            return $this->listAllFeaturesPerProvider();
+            return $this->listAllFeaturesPerProvider($io);
         }
 
-        return $this->detailsFeature($input->getArgument('featureName'));
+        return $this->detailsFeature($io, $input->getArgument('featureName'));
     }
 
-    private function detailsFeature(string $debuggingFeatureName): int
+    private function detailsFeature(SymfonyStyle $io, string $debuggingFeatureName): int
     {
-        $this->io->title("About \"{$debuggingFeatureName}\" flag");
+        $io->title("About \"{$debuggingFeatureName}\" flag");
 
-        $tableHeaders = ['Name', 'Description', 'Default', 'Provider', 'Strategy Tree'];
-        $tableRows = [];
         $providerNames = [];
+        $featureFoundName = null;
+        $featureFoundProviders = [];
         $candidates = [];
 
         foreach ($this->featureProviders as $serviceName => $featureProvider) {
@@ -99,9 +94,6 @@ final class FeatureFlagsDebugCommand extends Command
             $providerNames[] = $providerName;
 
             foreach ($featureProvider->names() as $featureName) {
-                $this->featureSources[$featureName] ??= [];
-                $this->featureSources[$featureName][] = $providerName;
-
                 if (
                     !\in_array($featureName, $candidates, true)
                     && (str_contains($featureName, $debuggingFeatureName) || levenshtein($featureName, $debuggingFeatureName) <= \strlen($featureName) / 3)
@@ -113,59 +105,62 @@ final class FeatureFlagsDebugCommand extends Command
                     continue;
                 }
 
-                if (1 < count($this->featureSources[$featureName])) {
+                $featureFoundName = $featureName;
+                $featureFoundProviders[] = $providerName;
+
+                if (1 < count($featureFoundProviders)) {
                     continue;
                 }
 
                 $feature = $featureProvider->get($featureName);
                 $featureGetDefault = Closure::bind(fn(): bool => $feature->default, $feature, Feature::class);
 
-                $tableRows[] = [
-                    $featureName,
-                    chunk_split($feature->getDescription(), 60, "\n"),
-                    json_encode($featureGetDefault()),
-                    $providerName,
-                    $this->getStrategyTreeFromFeature($feature)
-                ];
+                $io
+                    ->createTable()
+                    ->setHorizontal()
+                    ->setHeaders(['Name', 'Description', 'Default', 'Provider', 'Strategy Tree'])
+                    ->addRow([
+                        $featureName,
+                        chunk_split($feature->getDescription(), 60, "\n"),
+                        json_encode($featureGetDefault()),
+                        $providerName,
+                        $this->getStrategyTreeFromFeature($feature)
+                    ])
+                    ->setStyle('compact')
+                    ->render()
+                ;
             }
         }
 
-        if (0 === count($tableRows)) {
-            $warning = sprintf(
-                "\"%s\" not found in any of the following providers :\n%s",
-                $debuggingFeatureName,
-                implode("\n", array_map(fn (string $providerName) => '  * '.$providerName, $providerNames)),
+        if (null !== $featureFoundName) {
+            $this->renderDuplicateWarnings($io, $featureFoundName, $featureFoundProviders);
+
+            return 0;
+        }
+
+        $warning = sprintf(
+            "\"%s\" not found in any of the following providers :\n%s",
+            $debuggingFeatureName,
+            implode("\n", array_map(fn (string $providerName) => '  * '.$providerName, $providerNames)),
+        );
+        if (0 < count($candidates)) {
+            $warning .= sprintf(
+                "\nDid you mean \"%s\"?",
+                implode('", "', $candidates),
             );
-            if (0 < count($candidates)) {
-                $warning .= sprintf(
-                    "\nDid you mean \"%s\"?",
-                    implode('", "', $candidates),
-                );
-            }
-            $this->io->warning($warning);
-
-            return 1;
         }
+        $io->warning($warning);
 
-        $this->io
-            ->createTable()
-            ->setHorizontal()
-            ->setHeaders($tableHeaders)
-            ->setRows($tableRows)
-            ->setStyle('compact')
-            ->render()
-        ;
-
-        $this->renderDuplicateWarnings($tableRows[0][0]);
-
-        return 0;
+        return 1;
     }
 
-    private function listAllFeaturesPerProvider(): int
+    private function listAllFeaturesPerProvider(SymfonyStyle $io): int
     {
-        $this->io->title('Feature list grouped by their providers');
+        $io->title('Feature list grouped by their providers');
 
         $order = 0;
+        $groupedFeatureProviders = [];
+
         foreach ($this->featureProviders as $serviceName => $featureProvider) {
             ++$order;
 
@@ -173,14 +168,14 @@ final class FeatureFlagsDebugCommand extends Command
             if ($providerName !== $serviceName) {
                 $providerName .= " ({$serviceName}).";
             }
-            $this->io->section("#{$order} - {$providerName}");
+            $io->section("#{$order} - {$providerName}");
 
             $tableHeaders = ['Name', 'Description', 'Default', 'Main Strategy'];
             $tableRows = [];
 
             foreach ($featureProvider->names() as $featureName) {
-                $this->featureSources[$featureName] ??= [];
-                $this->featureSources[$featureName][] = $providerName;
+                $groupedFeatureProviders[$featureName] ??= [];
+                $groupedFeatureProviders[$featureName][] = $providerName;
 
                 $feature = $featureProvider->get($featureName);
 
@@ -211,11 +206,11 @@ final class FeatureFlagsDebugCommand extends Command
                 ];
 
             }
-            $this->io->table($tableHeaders, $tableRows);
+            $io->table($tableHeaders, $tableRows);
         }
 
-        foreach ($this->featureSources as $featureName => $providerNames) {
-            $this->renderDuplicateWarnings($featureName);
+        foreach ($groupedFeatureProviders as $featureName => $featureProviders) {
+            $this->renderDuplicateWarnings($io, $featureName, $featureProviders);
         }
 
         return 0;
@@ -276,9 +271,11 @@ final class FeatureFlagsDebugCommand extends Command
         return "{$prefix}{$row}";
     }
 
-    private function renderDuplicateWarnings(string $featureName): void
+    /**
+     * @param list<string> $providerNames
+     */
+    private function renderDuplicateWarnings(SymfonyStyle $io, string $featureName, array $providerNames): void
     {
-        $providerNames = $this->featureSources[$featureName] ?? [];
         $duplicatesCount = count($providerNames) - 1;
         if (0 === $duplicatesCount) {
             return;
@@ -291,6 +288,6 @@ final class FeatureFlagsDebugCommand extends Command
         $warningMessage.= "\n";
         $warningMessage.= implode("\n", array_map(fn(string $providerName): string => '  * '.$providerName, $providerNames));
 
-        $this->io->warning($warningMessage);
+        $io->warning($warningMessage);
     }
 }
