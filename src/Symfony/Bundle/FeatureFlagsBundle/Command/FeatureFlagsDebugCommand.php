@@ -201,8 +201,14 @@ EOF
                     $strategyString .= " ({$strategyId})";
                 }
 
+                $rowFeatureName = $featureName;
+
+                if (count($groupedFeatureProviders[$featureName]) > 1) {
+                    $rowFeatureName .= " (⚠️ duplicated)";
+                }
+
                 $tableRows[] = [
-                    $featureName,
+                    $rowFeatureName,
                     chunk_split($feature->getDescription(), 40, "\n"),
                     json_encode($featureGetDefault()),
                     $strategyString
