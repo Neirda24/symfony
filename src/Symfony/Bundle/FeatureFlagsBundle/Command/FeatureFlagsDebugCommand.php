@@ -24,9 +24,7 @@ use Symfony\Component\FeatureFlags\Provider\ProviderInterface;
 use Symfony\Component\FeatureFlags\Strategy\OuterStrategiesInterface;
 use Symfony\Component\FeatureFlags\Strategy\OuterStrategyInterface;
 use Symfony\Component\FeatureFlags\Strategy\StrategyInterface;
-use function array_column;
 use function array_map;
-use function array_shift;
 use function array_slice;
 use function chunk_split;
 use function count;
@@ -36,7 +34,6 @@ use function levenshtein;
 use function sprintf;
 use function str_repeat;
 use function strlen;
-use function usort;
 
 /**
  * A console command for retrieving information about feature flags.
@@ -59,13 +56,19 @@ final class FeatureFlagsDebugCommand extends Command
     {
         $this
             ->addArgument('featureName', InputArgument::OPTIONAL, 'Feature name. If provided will display the full tree of strategies regarding that feature.')
+            ->setHelp(<<<'EOF'
+The <info>%command.name%</info> command displays all configured feature flags:
+
+  <info>php %command.full_name%</info>
+
+To get more insight for a flag, specify its name:
+
+  <info>php %command.full_name% my-feature</info>
+EOF
+            )
         ;
     }
 
-
-    /**
-     * @throws \LogicException
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
@@ -108,7 +111,7 @@ final class FeatureFlagsDebugCommand extends Command
                 $featureFoundName = $featureName;
                 $featureFoundProviders[] = $providerName;
 
-                if (1 < count($featureFoundProviders)) {
+                if (count($featureFoundProviders) > 1) {
                     continue;
                 }
 
@@ -121,7 +124,7 @@ final class FeatureFlagsDebugCommand extends Command
                     ->setHeaders(['Name', 'Description', 'Default', 'Provider', 'Strategy Tree'])
                     ->addRow([
                         $featureName,
-                        chunk_split($feature->getDescription(), 60, "\n"),
+                        chunk_split($feature->getDescription(), 40, "\n"),
                         json_encode($featureGetDefault()),
                         $providerName,
                         $this->getStrategyTreeFromFeature($feature)
@@ -145,7 +148,7 @@ final class FeatureFlagsDebugCommand extends Command
         );
         if (0 < count($candidates)) {
             $warning .= sprintf(
-                "\nDid you mean \"%s\"?",
+                "\n\nDid you mean \"%s\"?",
                 implode('", "', $candidates),
             );
         }
@@ -200,7 +203,7 @@ final class FeatureFlagsDebugCommand extends Command
 
                 $tableRows[] = [
                     $featureName,
-                    chunk_split($feature->getDescription(), 60, "\n"),
+                    chunk_split($feature->getDescription(), 40, "\n"),
                     json_encode($featureGetDefault()),
                     $strategyString
                 ];
@@ -279,10 +282,14 @@ final class FeatureFlagsDebugCommand extends Command
         $duplicatesCount = count($providerNames) - 1;
         if (0 === $duplicatesCount) {
             return;
-        } elseif (1 === $duplicatesCount) {
+        }
+
+        $providerNames = array_slice($providerNames, -$duplicatesCount);
+
+        if (1 === $duplicatesCount) {
             $warningMessage = sprintf("Found 1 duplicate for \"%s\" feature, which will probably never be used, in those providers:", $featureName);
         } else {
-            $warningMessage = sprintf("Found %d duplicates for \"%s\" feature, which will probably never be used, in those providers:", $featureName, $duplicatesCount);
+            $warningMessage = sprintf("Found %d duplicates for \"%s\" feature, which will probably never be used, in those providers:", $duplicatesCount, $featureName);
         }
 
         $warningMessage.= "\n";
