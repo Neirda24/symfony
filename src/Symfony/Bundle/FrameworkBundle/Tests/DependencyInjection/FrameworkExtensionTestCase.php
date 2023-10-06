@@ -45,6 +45,7 @@ use Symfony\Component\DependencyInjection\ParameterBag\EnvPlaceholderParameterBa
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\FeatureFlags\FeatureChecker;
+use Symfony\Component\FeatureFlags\Strategy\StrategyInterface;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Form\Form;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizer;
@@ -2320,6 +2321,13 @@ abstract class FrameworkExtensionTestCase extends TestCase
                 "'{$expectedServiceId}' does not have the tag.",
             );
         }
+
+        $registeredForAutoconfiguration = $container->getAutoconfiguredInstanceof();
+
+        self::assertArrayHasKey(StrategyInterface::class, $registeredForAutoconfiguration);
+        $tags = $registeredForAutoconfiguration[StrategyInterface::class]->getTags();
+
+        self::assertArrayHasKey('feature_flags.feature_strategy', $tags);
     }
 
     protected function createContainer(array $data = [])
