@@ -11,6 +11,8 @@
 
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
+use Symfony\Component\DependencyInjection\Reference;
+use Symfony\Component\FeatureFlags\Debug\TraceableFeatureChecker;
 use Symfony\Component\HttpKernel\Controller\ArgumentResolver\NotTaggedControllerValueResolver;
 use Symfony\Component\HttpKernel\Controller\TraceableArgumentResolver;
 use Symfony\Component\HttpKernel\Controller\TraceableControllerResolver;

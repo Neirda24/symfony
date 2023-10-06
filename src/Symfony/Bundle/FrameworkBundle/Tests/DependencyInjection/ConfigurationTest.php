@@ -782,6 +782,11 @@ class ConfigurationTest extends TestCase
             'remote-event' => [
                 'enabled' => false,
             ],
+            'feature_flags' => [
+                'enabled' => false,
+                'strategies' => [],
+                'features' => [],
+            ],
         ];
     }
 }
