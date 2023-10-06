@@ -42,15 +42,13 @@ return static function (ContainerConfigurator $container) {
                 '$features' => service('feature_flags.feature_collection'),
                 '$whenNotFound' => false,
             ])
-
-        ->alias(FeatureCheckerInterface::class, service('feature_flags.feature_checker'))
+        ->alias(FeatureCheckerInterface::class, 'feature_flags.feature_checker')
 
         ->set('feature_flags.provider.lazy_in_memory', LazyInMemoryProvider::class)
             ->args([
                 '$features' => abstract_arg('Defined in FeatureFlagsExtension'),
             ])
             ->tag('feature_flags.feature_provider', ['priority' => 16])
-
 
         ->set($strategyPrefix.'grant', GrantStrategy::class)->abstract()
         ->set($strategyPrefix.'not', NotStrategy::class)->abstract()->args([
@@ -84,16 +82,6 @@ return static function (ContainerConfigurator $container) {
         ->set($strategyPrefix.'unanimous', UnanimousStrategy::class)->abstract()->args([
             '$strategies' => abstract_arg('Defined in FeatureFlagsExtension'),
         ])
-
-        ->set('feature_flags.routing.provider', \Closure::class)
-            ->factory([\Closure::class, 'fromCallable'])
-            ->args([
-                [service('feature_flags.feature_checker'), 'isEnabled'],
-            ])
-            ->tag('routing.expression_language_function', ['function' => 'isFeatureEnabled'])
-        ->get('feature_flags.feature_checker')
-            ->tag('routing.condition_service', ['alias' => 'feature'])
-
 
         ->set('console.command.feature_flags_debug', FeatureFlagsDebugCommand::class)
             ->args([

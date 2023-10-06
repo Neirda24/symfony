@@ -16,7 +16,7 @@ use Symfony\Component\FeatureFlags\Strategy\OuterStrategyInterface;
 use Symfony\Component\FeatureFlags\Strategy\StrategyInterface;
 use Symfony\Component\FeatureFlags\StrategyResult;
 
-    final class TraceableStrategy implements StrategyInterface, OuterStrategyInterface
+final class TraceableStrategy implements StrategyInterface, OuterStrategyInterface
 {
     public function __construct(
         private readonly StrategyInterface $strategy,
