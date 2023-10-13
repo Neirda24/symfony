@@ -10,15 +10,15 @@ use function array_keys;
 
 final class LazyInMemoryProvider implements ProviderInterface
 {
-    /**
-     * @param array<string, (\Closure(): Feature)> $features
-     */
-    public function __construct(
-        private readonly array $features,
-    ) {
+    /** @var array<string, \Closure> $features */
+    private array $features = [];
+
+    public function add(string $featureName, \Closure $feature): void
+    {
+        $this->features[$featureName] = $feature;
     }
 
-    public function get(string $featureName): ?Feature
+    public function get(string $featureName): mixed
     {
         if (!array_key_exists($featureName, $this->features)) {
             return null;

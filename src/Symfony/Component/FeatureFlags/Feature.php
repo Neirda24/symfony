@@ -33,7 +33,7 @@ final class Feature
         return $this->description;
     }
 
-    public function isEnabled(): bool
+    public function __invoke(): bool
     {
         return match($this->strategy->compute()) {
             StrategyResult::Grant => true,

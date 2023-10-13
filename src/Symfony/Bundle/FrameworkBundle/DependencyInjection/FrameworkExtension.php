@@ -71,6 +71,7 @@ use Symfony\Component\Dotenv\Command\DebugCommand;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\ExpressionLanguage\ExpressionLanguage;
+use Symfony\Component\FeatureFlags\Attribute\AsFeature;
 use Symfony\Component\FeatureFlags\Feature;
 use Symfony\Component\FeatureFlags\FeatureChecker;
 use Symfony\Component\FeatureFlags\Provider\ProviderInterface;
@@ -2991,56 +2992,65 @@ class FrameworkExtension extends Extension
         $container->registerForAutoconfiguration(ProviderInterface::class)
             ->addTag('feature_flags.feature_provider')
         ;
-        $features = [];
-        foreach ($config['features'] as $featureName => $featureConfig) {
-            $features[$featureName] = new ServiceClosureArgument((new Definition(Feature::class))
-                ->setShared(false)
-                ->setArguments([
-                    $featureName,
-                    $featureConfig['description'],
-                    $featureConfig['default'],
-                    new Reference($featureConfig['strategy']),
-                ]))
+//        $features = [];
+//        foreach ($config['features'] as $featureName => $featureConfig) {
+//            $features[$featureName] = new ServiceClosureArgument((new Definition(Feature::class))
+//                ->setShared(false)
+//                ->setArguments([
+//                    $featureName,
+//                    $featureConfig['description'],
+//                    $featureConfig['default'],
+//                    new Reference($featureConfig['strategy']),
+//                ]))
+//            ;
+//        }
+//        $container->getDefinition('feature_flags.provider.lazy_in_memory')
+//            ->setArgument('$features', $features)
+//        ;
+//
+//        $container->registerForAutoconfiguration(StrategyInterface::class)
+//            ->addTag('feature_flags.feature_strategy')
+//        ;
+//
+//        foreach ($config['strategies'] as $strategyName => $strategyConfig) {
+//            ['type' => $type, 'with' => $with] = $strategyConfig;
+//
+//            $definition = new ChildDefinition("feature_flags.abstract_strategy.{$type}");
+//            $definition = match ($type) {
+//                'date' => $definition->setArguments([
+//                    '$since' => new Definition(\DateTimeImmutable::class, [$with['since']]),
+//                    '$until' => new Definition(\DateTimeImmutable::class, [$with['until']]),
+//                    '$includeSince' => $with['includeSince'],
+//                    '$includeUntil' => $with['includeUntil'],
+//                ]),
+//                'env' => $definition->setArguments(['$envName' => $with['name']]),
+//                'request_header' => $definition->setArguments(['$headerName' => $with['name']]),
+//                'request_query' => $definition->setArguments(['$queryParameterName' => $with['name']]),
+//                'request_attribute' => $definition->setArguments(['$attributeName' => $with['name']]), // Check if RequestStack class exists
+//                'priority', 'affirmative', 'unanimous' => $definition->setArguments([
+//                    '$strategies' => array_map(
+//                        static fn (string $referencedStrategyName): Reference => new Reference($referencedStrategyName), // @phpstan-ignore-line
+//                        (array) $with['strategies'],
+//                    ),
+//                ]),
+//                'not' => $definition->setArguments([
+//                    '$inner' => new Reference($with['strategy']), // @phpstan-ignore-line
+//                ]),
+//                'grant', 'deny', => $definition,
+//                default => new ChildDefinition($type),
+//            };
+//
+//            $container->setDefinition($strategyName, $definition)->addTag('feature_flags.feature_strategy');
+//        }
+
+        $container->registerAttributeForAutoconfiguration(AsFeature::class, static function (ChildDefinition $definition, AsFeature $attribute, \ReflectionClass|\ReflectionMethod $reflector): void {
+            $definition
+                ->addTag('feature_flags.feature', [
+                    'name' => $attribute->name,
+                    'method' => $reflector instanceof \ReflectionMethod ? $reflector->getName() : $attribute->method,
+                ])
             ;
-        }
-        $container->getDefinition('feature_flags.provider.lazy_in_memory')
-            ->setArgument('$features', $features)
-        ;
-
-        $container->registerForAutoconfiguration(StrategyInterface::class)
-            ->addTag('feature_flags.feature_strategy')
-        ;
-
-        foreach ($config['strategies'] as $strategyName => $strategyConfig) {
-            ['type' => $type, 'with' => $with] = $strategyConfig;
-
-            $definition = new ChildDefinition("feature_flags.abstract_strategy.{$type}");
-            $definition = match ($type) {
-                'date' => $definition->setArguments([
-                    '$since' => new Definition(\DateTimeImmutable::class, [$with['since']]),
-                    '$until' => new Definition(\DateTimeImmutable::class, [$with['until']]),
-                    '$includeSince' => $with['includeSince'],
-                    '$includeUntil' => $with['includeUntil'],
-                ]),
-                'env' => $definition->setArguments(['$envName' => $with['name']]),
-                'request_header' => $definition->setArguments(['$headerName' => $with['name']]),
-                'request_query' => $definition->setArguments(['$queryParameterName' => $with['name']]),
-                'request_attribute' => $definition->setArguments(['$attributeName' => $with['name']]), // Check if RequestStack class exists
-                'priority', 'affirmative', 'unanimous' => $definition->setArguments([
-                    '$strategies' => array_map(
-                        static fn (string $referencedStrategyName): Reference => new Reference($referencedStrategyName), // @phpstan-ignore-line
-                        (array) $with['strategies'],
-                    ),
-                ]),
-                'not' => $definition->setArguments([
-                    '$inner' => new Reference($with['strategy']), // @phpstan-ignore-line
-                ]),
-                'grant', 'deny', => $definition,
-                default => new ChildDefinition($type),
-            };
-
-            $container->setDefinition($strategyName, $definition)->addTag('feature_flags.feature_strategy');
-        }
+        });
 
         if (ContainerBuilder::willBeAvailable('symfony/routing', Router::class, ['symfony/framework-bundle', 'symfony/routing'])) {
             $loader->load('feature_flags_routing.php');

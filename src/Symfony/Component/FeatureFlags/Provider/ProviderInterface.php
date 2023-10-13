@@ -15,7 +15,7 @@ use Symfony\Component\FeatureFlags\Feature;
 
 interface ProviderInterface
 {
-    public function get(string $featureName): ?Feature;
+    public function get(string $featureName);
 
     /**
      * @return list<string>

@@ -45,9 +45,7 @@ return static function (ContainerConfigurator $container) {
         ->alias(FeatureCheckerInterface::class, 'feature_flags.feature_checker')
 
         ->set('feature_flags.provider.lazy_in_memory', LazyInMemoryProvider::class)
-            ->args([
-                '$features' => abstract_arg('Defined in FeatureFlagsExtension'),
-            ])
+            ->args([tagged_locator('feature_flags.feature', 'name')])
             ->tag('feature_flags.feature_provider', ['priority' => 16])
 
         ->set($strategyPrefix.'grant', GrantStrategy::class)->abstract()

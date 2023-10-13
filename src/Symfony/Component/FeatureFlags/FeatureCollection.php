@@ -41,7 +41,7 @@ final class FeatureCollection implements ContainerInterface
         return new self([new InMemoryProvider($features)]);
     }
 
-    private function findFeature(string $featureName): ?Feature
+    private function findFeature(string $featureName)
     {
         if (array_key_exists($featureName, $this->features)) {
             return $this->features[$featureName];
@@ -49,9 +49,7 @@ final class FeatureCollection implements ContainerInterface
 
         foreach ($this->providers as $provider) {
             if (($feature = $provider->get($featureName)) !== null) {
-                $this->features[$feature->getName()] = $feature;
-
-                return $feature;
+                return $this->features[$featureName] = $feature;
             }
         }
 
@@ -66,7 +64,7 @@ final class FeatureCollection implements ContainerInterface
     /**
      * @throws FeatureNotFoundException If the feature is not registered in this provider.
      */
-    public function get(string $id): Feature
+    public function get(string $id)
     {
         return $this->findFeature($id) ?? throw new FeatureNotFoundException($id);
     }
