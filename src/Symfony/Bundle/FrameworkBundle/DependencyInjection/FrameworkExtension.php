@@ -11,7 +11,6 @@
 
 namespace Symfony\Bundle\FrameworkBundle\DependencyInjection;
 
-use Closure;
 use Composer\InstalledVersions;
 use Http\Client\HttpAsyncClient;
 use Http\Client\HttpClient;
@@ -25,10 +24,8 @@ use Psr\Container\ContainerInterface as PsrContainerInterface;
 use Psr\Http\Client\ClientInterface;
 use Psr\Log\LoggerAwareInterface;
 use ReflectionClass;
-use ReflectionMethod;
 use Symfony\Bridge\Monolog\Processor\DebugProcessor;
 use Symfony\Bridge\Twig\Extension\CsrfExtension;
-use Symfony\Bundle\FeatureFlagsBundle\Strategy\CustomStrategy;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Bundle\FrameworkBundle\Routing\RouteLoaderInterface;
 use Symfony\Bundle\FullStack;
@@ -78,7 +75,6 @@ use Symfony\Component\FeatureFlags\Attribute\AsStrategy;
 use Symfony\Component\FeatureFlags\Feature;
 use Symfony\Component\FeatureFlags\FeatureChecker;
 use Symfony\Component\FeatureFlags\Provider\ProviderInterface;
-use Symfony\Component\FeatureFlags\Strategy\CallbackStrategy;
 use Symfony\Component\FeatureFlags\Strategy\StrategyInterface;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Finder\Glob;
@@ -3009,7 +3005,7 @@ class FrameworkExtension extends Extension
                 ]))
             ;
         }
-        $lazyInMemoryProvider = $container->getDefinition('feature_flags.provider.lazy_in_memory')
+        $container->getDefinition('feature_flags.provider.lazy_in_memory')
             ->setArgument('$features', $features)
         ;
 
@@ -3018,7 +3014,7 @@ class FrameworkExtension extends Extension
         ;
 
         $container->registerAttributeForAutoconfiguration(AsStrategy::class,
-            static function (ChildDefinition $definition, AsStrategy $attribute, \ReflectionClass|\ReflectionMethod $reflector) use (&$lazyInMemoryProvider): void {
+            static function (ChildDefinition $definition, AsStrategy $attribute, \ReflectionClass|\ReflectionMethod $reflector): void {
                 if ($reflector instanceof ReflectionClass) {
                     if (!$reflector->hasMethod('__invoke')) {
                         throw new \LogicException('Wrong');
@@ -3029,34 +3025,11 @@ class FrameworkExtension extends Extension
                     $callbackMethod = $reflector->getName();
                 }
 
-                $callback = (new Definition(Closure::class))
-                    ->setFactory([Closure::class, 'fromCallable'])
-                    ->setArguments([$definition, $callbackMethod])
-                ;
-
-                $callbackDefinition = (new Definition(CallbackStrategy::class))
-                    ->addTag('feature_flags.feature_strategy')
-                    ->setArguments([
-                        $callback
-                    ])
-                ;
-
                 $definition->addTag('feature_flags.self_feature_strategy', [
                     'feature' => $attribute->feature,
                     'default' => $attribute->default,
                     'method' => $callbackMethod,
                 ]);
-
-//                $lazyInMemoryProvider->setArgument('$features', array_merge($lazyInMemoryProvider->getArgument('$features'), [
-//                    $attribute->feature => new ServiceClosureArgument((new Definition(Feature::class))
-//                        ->setShared(false)
-//                        ->setArguments([
-//                            $attribute->feature,
-//                            '',
-//                            $attribute->default,
-//                            $callbackDefinition,
-//                        ])),
-//                ]));
             }
         );
 
