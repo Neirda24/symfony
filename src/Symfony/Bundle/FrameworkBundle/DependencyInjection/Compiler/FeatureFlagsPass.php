@@ -25,7 +25,7 @@ final class FeatureFlagsPass implements CompilerPassInterface
             foreach ($tags as $tag) {
                 $callback = (new Definition(Closure::class))
                     ->setFactory([Closure::class, 'fromCallable'])
-                    ->setArguments([new Reference($serviceId), $tag['method']])
+                    ->setArguments([[new Reference($serviceId), $tag['method']]])
                 ;
 
                 $callbackDefinition = (new Definition(CallbackStrategy::class))
