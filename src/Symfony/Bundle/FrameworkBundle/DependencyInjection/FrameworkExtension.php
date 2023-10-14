@@ -11,6 +11,7 @@
 
 namespace Symfony\Bundle\FrameworkBundle\DependencyInjection;
 
+use Closure;
 use Composer\InstalledVersions;
 use Http\Client\HttpAsyncClient;
 use Http\Client\HttpClient;
@@ -23,6 +24,8 @@ use Psr\Clock\ClockInterface as PsrClockInterface;
 use Psr\Container\ContainerInterface as PsrContainerInterface;
 use Psr\Http\Client\ClientInterface;
 use Psr\Log\LoggerAwareInterface;
+use ReflectionClass;
+use ReflectionMethod;
 use Symfony\Bridge\Monolog\Processor\DebugProcessor;
 use Symfony\Bridge\Twig\Extension\CsrfExtension;
 use Symfony\Bundle\FeatureFlagsBundle\Strategy\CustomStrategy;
@@ -71,9 +74,11 @@ use Symfony\Component\Dotenv\Command\DebugCommand;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\ExpressionLanguage\ExpressionLanguage;
+use Symfony\Component\FeatureFlags\Attribute\AsStrategy;
 use Symfony\Component\FeatureFlags\Feature;
 use Symfony\Component\FeatureFlags\FeatureChecker;
 use Symfony\Component\FeatureFlags\Provider\ProviderInterface;
+use Symfony\Component\FeatureFlags\Strategy\CallbackStrategy;
 use Symfony\Component\FeatureFlags\Strategy\StrategyInterface;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Finder\Glob;
@@ -194,6 +199,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\Service\ResetInterface;
 use Symfony\Contracts\Service\ServiceSubscriberInterface;
 use Symfony\Contracts\Translation\LocaleAwareInterface;
+use function array_merge;
 
 /**
  * Process the configuration and prepare the dependency injection container with
@@ -3003,13 +3009,56 @@ class FrameworkExtension extends Extension
                 ]))
             ;
         }
-        $container->getDefinition('feature_flags.provider.lazy_in_memory')
+        $lazyInMemoryProvider = $container->getDefinition('feature_flags.provider.lazy_in_memory')
             ->setArgument('$features', $features)
         ;
 
         $container->registerForAutoconfiguration(StrategyInterface::class)
             ->addTag('feature_flags.feature_strategy')
         ;
+
+        $container->registerAttributeForAutoconfiguration(AsStrategy::class,
+            static function (ChildDefinition $definition, AsStrategy $attribute, \ReflectionClass|\ReflectionMethod $reflector) use (&$lazyInMemoryProvider): void {
+                if ($reflector instanceof ReflectionClass) {
+                    if (!$reflector->hasMethod('__invoke')) {
+                        throw new \LogicException('Wrong');
+                    }
+
+                    $callbackMethod = '__invoke';
+                } else {
+                    $callbackMethod = $reflector->getName();
+                }
+
+                $callback = (new Definition(Closure::class))
+                    ->setFactory([Closure::class, 'fromCallable'])
+                    ->setArguments([$definition, $callbackMethod])
+                ;
+
+                $callbackDefinition = (new Definition(CallbackStrategy::class))
+                    ->addTag('feature_flags.feature_strategy')
+                    ->setArguments([
+                        $callback
+                    ])
+                ;
+
+                $definition->addTag('feature_flags.self_feature_strategy', [
+                    'feature' => $attribute->feature,
+                    'default' => $attribute->default,
+                    'method' => $callbackMethod,
+                ]);
+
+//                $lazyInMemoryProvider->setArgument('$features', array_merge($lazyInMemoryProvider->getArgument('$features'), [
+//                    $attribute->feature => new ServiceClosureArgument((new Definition(Feature::class))
+//                        ->setShared(false)
+//                        ->setArguments([
+//                            $attribute->feature,
+//                            '',
+//                            $attribute->default,
+//                            $callbackDefinition,
+//                        ])),
+//                ]));
+            }
+        );
 
         foreach ($config['strategies'] as $strategyName => $strategyConfig) {
             ['type' => $type, 'with' => $with] = $strategyConfig;

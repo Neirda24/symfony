@@ -1,0 +1,15 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Symfony\Component\FeatureFlags\Attribute;
+
+#[\Attribute(\Attribute::TARGET_CLASS | \Attribute::TARGET_METHOD | \Attribute::IS_REPEATABLE)]
+final class AsStrategy
+{
+    public function __construct(
+        public readonly string $feature,
+        public readonly bool $default = false,
+    ) {
+    }
+}
