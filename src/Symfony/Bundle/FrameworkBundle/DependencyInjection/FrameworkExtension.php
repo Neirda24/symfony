@@ -3040,13 +3040,14 @@ class FrameworkExtension extends Extension
 //                default => new ChildDefinition($type),
 //            };
 //
-//            $container->setDefinition($strategyName, $definition)->addTag('feature_flags.feature_strategy');
+//            $container->setDefinition($strategyName, $definition)->addTag('feature_flags.strategy');
 //        }
 
         $container->registerAttributeForAutoconfiguration(AsFeature::class, static function (ChildDefinition $definition, AsFeature $attribute, \ReflectionClass|\ReflectionMethod $reflector): void {
             $definition
-                ->addTag('feature_flags.feature', [
+                ->addTag('feature_flags.feature_strategy', [
                     'name' => $attribute->name,
+                    'description' => $attribute->description ?? '',
                     'method' => $reflector instanceof \ReflectionMethod ? $reflector->getName() : $attribute->method,
                 ])
             ;

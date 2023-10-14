@@ -25,6 +25,6 @@ final class FeatureChecker implements FeatureCheckerInterface
             return $this->whenNotFound;
         }
 
-        return $this->features->get($featureName)();
+        return $this->features->get($featureName)->isEnabled();
     }
 }
