@@ -10,6 +10,7 @@ final class AsStrategy
     public function __construct(
         public readonly string|null $feature = null,
         public readonly string|null $description = null,
+        public readonly string|null $method = null,
     ) {
     }
 }
