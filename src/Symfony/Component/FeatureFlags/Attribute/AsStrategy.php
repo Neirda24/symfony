@@ -8,7 +8,8 @@ namespace Symfony\Component\FeatureFlags\Attribute;
 final class AsStrategy
 {
     public function __construct(
-        public readonly string $feature,
+        public readonly string|null $feature = null,
+        public readonly string|null $description = null,
         public readonly bool $default = false,
     ) {
     }

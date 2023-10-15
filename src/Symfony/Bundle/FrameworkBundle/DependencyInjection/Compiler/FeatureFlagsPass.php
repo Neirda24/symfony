@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Symfony\Bundle\FrameworkBundle\DependencyInjection\Compiler;
 
 use Closure;
+use LogicException;
 use Symfony\Component\DependencyInjection\Argument\ServiceClosureArgument;
+use Symfony\Component\DependencyInjection\ChildDefinition;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
@@ -17,15 +19,28 @@ final class FeatureFlagsPass implements CompilerPassInterface
 {
     public function process(ContainerBuilder $container)
     {
+        if (!$container->hasDefinition('feature_flags.provider.lazy_in_memory')) {
+            return;
+        }
+
         $lazyInMemoryProvider = $container->getDefinition('feature_flags.provider.lazy_in_memory');
 
         $features = $lazyInMemoryProvider->getArgument('$features');
 
         foreach ($container->findTaggedServiceIds('feature_flags.self_feature_strategy') as $serviceId => $tags) {
+            $className = $this->getServiceClass($container, $serviceId);
+            $r = $container->getReflectionClass($className);
+
             foreach ($tags as $tag) {
+                $method = $tag['method'] ?? '__invoke';
+
+                if (!$r->hasMethod($method)) {
+                    throw new \RuntimeException(sprintf('Invalid feature "%s": method "%s::%s()" does not exist.', $serviceId, $r->getName(), $method));
+                }
+
                 $callback = (new Definition(Closure::class))
                     ->setFactory([Closure::class, 'fromCallable'])
-                    ->setArguments([[new Reference($serviceId), $tag['method']]])
+                    ->setArguments([[new Reference($serviceId), $method]])
                 ;
 
                 $callbackDefinition = (new Definition(CallbackStrategy::class))
@@ -35,12 +50,21 @@ final class FeatureFlagsPass implements CompilerPassInterface
                     ])
                 ;
 
-                $features[$tag['feature']] = new ServiceClosureArgument((new Definition(Feature::class))
+                $featureName = $tag['feature'];
+
+                if (null === $tag['feature'] || '' === $tag['feature']) {
+                    $featureName = $className;
+                    if ('__invoke' !== $method) {
+                        $featureName .= '::'.$method;
+                    }
+                }
+
+                $features[$featureName] = new ServiceClosureArgument((new Definition(Feature::class))
                     ->setShared(false)
                     ->setArguments([
-                        $tag['feature'],
-                        '',
-                        $tag['default'],
+                        $featureName,
+                        $tag['description'] ?? '',
+                        $tag['default'] ?? false,
                         $callbackDefinition,
                     ]))
                 ;
@@ -48,5 +72,20 @@ final class FeatureFlagsPass implements CompilerPassInterface
         }
 
         $lazyInMemoryProvider->setArgument('$features', $features);
+    }
+
+    private function getServiceClass(ContainerBuilder $container, string $serviceId): string
+    {
+        while (true) {
+            $definition = $container->findDefinition($serviceId);
+
+            if (!$definition->getClass() && $definition instanceof ChildDefinition) {
+                $serviceId = $definition->getParent();
+
+                continue;
+            }
+
+            return $definition->getClass();
+        }
     }
 }

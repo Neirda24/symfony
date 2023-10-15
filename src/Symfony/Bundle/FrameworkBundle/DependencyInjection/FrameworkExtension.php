@@ -3027,6 +3027,7 @@ class FrameworkExtension extends Extension
 
                 $definition->addTag('feature_flags.self_feature_strategy', [
                     'feature' => $attribute->feature,
+                    'description' => $attribute->description,
                     'default' => $attribute->default,
                     'method' => $callbackMethod,
                 ]);
