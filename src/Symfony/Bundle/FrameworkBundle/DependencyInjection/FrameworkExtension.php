@@ -3015,21 +3015,11 @@ class FrameworkExtension extends Extension
 
         $container->registerAttributeForAutoconfiguration(AsStrategy::class,
             static function (ChildDefinition $definition, AsStrategy $attribute, \ReflectionClass|\ReflectionMethod $reflector): void {
-                if ($reflector instanceof ReflectionClass) {
-                    if (!$reflector->hasMethod('__invoke')) {
-                        throw new \LogicException('Wrong');
-                    }
-
-                    $callbackMethod = '__invoke';
-                } else {
-                    $callbackMethod = $reflector->getName();
-                }
-
                 $definition->addTag('feature_flags.self_feature_strategy', [
                     'feature' => $attribute->feature,
                     'description' => $attribute->description,
-                    'default' => $attribute->default,
-                    'method' => $callbackMethod,
+                    'default' => false,
+                    'method' => $reflector instanceof ReflectionClass ? '__invoke' : $reflector->getName(),
                 ]);
             }
         );

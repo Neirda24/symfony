@@ -18,7 +18,7 @@ use function is_bool;
 final class CallbackStrategy implements StrategyInterface
 {
     /**
-     * @param (Closure(): bool|StrategyResult) $inner
+     * @param Closure(): (bool|StrategyResult) $inner
      */
     public function __construct(
         private readonly Closure $inner,
@@ -37,6 +37,6 @@ final class CallbackStrategy implements StrategyInterface
             return $innerResult;
         }
 
-        // LogicExcepiton
+        // TODO : LogicExcepiton
     }
 }
