@@ -60,13 +60,15 @@ final class FeatureFlagsPass implements CompilerPassInterface
                     throw new \RuntimeException(sprintf('Feature "%s" already defined in the "feature_flags.provider.lazy_in_memory" provider.', $featureName));
                 }
 
+                $container->setDefinition($callbackDefinitionId = "feature_flags.callback_strategy.{$featureName}", $callbackDefinition);
+
                 $features[$featureName] = new ServiceClosureArgument((new Definition(Feature::class))
                     ->setShared(false)
                     ->setArguments([
                         $featureName,
                         $tag['description'] ?? '',
                         $tag['default'] ?? false,
-                        $callbackDefinition,
+                        new Reference($callbackDefinitionId),
                     ])
                 );
             }
