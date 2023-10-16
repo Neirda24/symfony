@@ -13,7 +13,6 @@ namespace Symfony\Component\FeatureFlags\Strategy;
 
 use Closure;
 use Symfony\Component\FeatureFlags\StrategyResult;
-use function is_bool;
 
 final class CallbackStrategy implements StrategyInterface
 {
@@ -37,6 +36,6 @@ final class CallbackStrategy implements StrategyInterface
             return $innerResult;
         }
 
-        // TODO : LogicExcepiton
+        throw new \LogicException(sprintf('The inner Closure must return a bool or a "%s". "%s" returned.', StrategyResult::class, get_debug_type($innerResult)));
     }
 }
