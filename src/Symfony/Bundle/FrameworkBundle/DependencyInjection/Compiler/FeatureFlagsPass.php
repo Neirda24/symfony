@@ -56,13 +56,9 @@ final class FeatureFlagsPass implements CompilerPassInterface
                     ])
                 ;
 
-                $featureName = $tag['feature'];
-
-                if (null === $tag['feature'] || '' === $tag['feature']) {
-                    $featureName = $className;
-                    if ('__invoke' !== $method) {
-                        $featureName .= '::'.$method;
-                    }
+                $featureName = $tag['feature'] ?: $className;
+                if (array_key_exists($featureName, $features)) {
+                    throw new \RuntimeException(sprintf('Feature "%s" already defined in the "feature_flags.provider.lazy_in_memory" provider.', $featureName));
                 }
 
                 $features[$featureName] = new ServiceClosureArgument((new Definition(Feature::class))
