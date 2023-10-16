@@ -22,7 +22,7 @@ use Symfony\Component\FeatureFlags\Strategy\CallbackStrategy;
 
 final class FeatureFlagsPass implements CompilerPassInterface
 {
-    public function process(ContainerBuilder $container)
+    public function process(ContainerBuilder $container): void
     {
         if (!$container->hasDefinition('feature_flags.provider.lazy_in_memory')) {
             return;
@@ -55,7 +55,7 @@ final class FeatureFlagsPass implements CompilerPassInterface
                     ])
                 ;
 
-                $featureName = $tag['feature'] ?: $className;
+                $featureName = ($tag['feature'] ?? '') ?: $className;
                 if (array_key_exists($featureName, $features)) {
                     throw new \RuntimeException(sprintf('Feature "%s" already defined in the "feature_flags.provider.lazy_in_memory" provider.', $featureName));
                 }
@@ -67,8 +67,8 @@ final class FeatureFlagsPass implements CompilerPassInterface
                         $tag['description'] ?? '',
                         $tag['default'] ?? false,
                         $callbackDefinition,
-                    ]))
-                ;
+                    ])
+                );
             }
         }
 

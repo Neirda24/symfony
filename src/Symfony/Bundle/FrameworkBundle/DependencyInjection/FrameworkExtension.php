@@ -3014,17 +3014,19 @@ class FrameworkExtension extends Extension
         $container->registerAttributeForAutoconfiguration(AsStrategy::class,
             static function (ChildDefinition $definition, AsStrategy $attribute, \ReflectionClass|\ReflectionMethod $reflector): void {
                 if ($reflector instanceof \ReflectionClass) {
-                    $method = $attribute->method ?? '__invoke';
+                    $className = $reflector->getNamespaceName() . $reflector->getName();
+                    $method = $attribute->method;
                 } else {
+                    $className = $reflector->getDeclaringClass()->getNamespaceName().$reflector->getDeclaringClass()->getName();
                     if (null !== $attribute->method && $reflector->getName() !== $attribute->method) {
-                        throw new \LogicException(sprintf('Using the #[%s(method: %s)] attribute on a method is not valid. Either remove the method value or move this to the top of the class (%s)', AsStrategy::class, $attribute->method, $reflector->getDeclaringClass()->getNamespaceName().$reflector->getDeclaringClass()->getName()));
+                        throw new \LogicException(sprintf('Using the #[%s(method: %s)] attribute on a method is not valid. Either remove the method value or move this to the top of the class (%s)', AsStrategy::class, $attribute->method, $className));
                     }
 
                     $method = $reflector->getName();
                 }
 
                 $definition->addTag('feature_flags.self_feature_strategy', [
-                    'feature' => $attribute->feature,
+                    'feature' => $attribute->feature ?? $className,
                     'description' => $attribute->description,
                     'method' => $method,
                 ]);
