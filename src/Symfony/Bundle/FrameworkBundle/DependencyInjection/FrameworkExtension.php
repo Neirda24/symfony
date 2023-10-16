@@ -196,6 +196,7 @@ use Symfony\Contracts\Service\ResetInterface;
 use Symfony\Contracts\Service\ServiceSubscriberInterface;
 use Symfony\Contracts\Translation\LocaleAwareInterface;
 use function array_merge;
+use function sprintf;
 
 /**
  * Process the configuration and prepare the dependency injection container with
@@ -3018,8 +3019,8 @@ class FrameworkExtension extends Extension
                 if ($reflector instanceof ReflectionClass) {
                     $method = $attribute->method ?? '__invoke';
                 } else {
-                    if (null !== $attribute->method) {
-                        throw new \LogicException('It doesn\'t make sense.');
+                    if (null !== $attribute->method && $reflector->getName() !== $attribute->method) {
+                        throw new \LogicException(sprintf('Using the #[%s(method: %s)] attribute on a method is not valid. Either remove the method value or move this to the top of the class (%s)', AsStrategy::class, $attribute->method, $reflector->getDeclaringClass()->getNamespaceName().$reflector->getDeclaringClass()->getName()));
                     }
 
                     $method = $reflector->getName();
@@ -3028,7 +3029,6 @@ class FrameworkExtension extends Extension
                 $definition->addTag('feature_flags.self_feature_strategy', [
                     'feature' => $attribute->feature,
                     'description' => $attribute->description,
-                    'default' => false,
                     'method' => $method,
                 ]);
             }
