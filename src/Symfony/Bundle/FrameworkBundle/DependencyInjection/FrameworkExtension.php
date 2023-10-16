@@ -23,7 +23,6 @@ use Psr\Clock\ClockInterface as PsrClockInterface;
 use Psr\Container\ContainerInterface as PsrContainerInterface;
 use Psr\Http\Client\ClientInterface;
 use Psr\Log\LoggerAwareInterface;
-use ReflectionClass;
 use Symfony\Bridge\Monolog\Processor\DebugProcessor;
 use Symfony\Bridge\Twig\Extension\CsrfExtension;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -195,8 +194,6 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\Service\ResetInterface;
 use Symfony\Contracts\Service\ServiceSubscriberInterface;
 use Symfony\Contracts\Translation\LocaleAwareInterface;
-use function array_merge;
-use function sprintf;
 
 /**
  * Process the configuration and prepare the dependency injection container with
@@ -3016,7 +3013,7 @@ class FrameworkExtension extends Extension
 
         $container->registerAttributeForAutoconfiguration(AsStrategy::class,
             static function (ChildDefinition $definition, AsStrategy $attribute, \ReflectionClass|\ReflectionMethod $reflector): void {
-                if ($reflector instanceof ReflectionClass) {
+                if ($reflector instanceof \ReflectionClass) {
                     $method = $attribute->method ?? '__invoke';
                 } else {
                     if (null !== $attribute->method && $reflector->getName() !== $attribute->method) {

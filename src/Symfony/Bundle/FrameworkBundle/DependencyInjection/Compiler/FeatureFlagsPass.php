@@ -11,7 +11,6 @@
 
 namespace Symfony\Bundle\FrameworkBundle\DependencyInjection\Compiler;
 
-use Closure;
 use Symfony\Component\DependencyInjection\Argument\ServiceClosureArgument;
 use Symfony\Component\DependencyInjection\ChildDefinition;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
@@ -44,8 +43,8 @@ final class FeatureFlagsPass implements CompilerPassInterface
                     throw new \RuntimeException(sprintf('Invalid feature strategy "%s": method "%s::%s()" does not exist.', $serviceId, $r->getName(), $method));
                 }
 
-                $callback = (new Definition(Closure::class))
-                    ->setFactory([Closure::class, 'fromCallable'])
+                $callback = (new Definition(\Closure::class))
+                    ->setFactory([\Closure::class, 'fromCallable'])
                     ->setArguments([[new Reference($serviceId), $method]])
                 ;
 
