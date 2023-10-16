@@ -177,9 +177,9 @@ class FrameworkBundle extends Bundle
         $container->addCompilerPass(new RemoveUnusedSessionMarshallingHandlerPass());
         // must be registered after MonologBundle's LoggerChannelPass
         $container->addCompilerPass(new ErrorLoggerCompilerPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, -32);
+        $container->addCompilerPass(new FeatureFlagsPass());
 
         if ($container->getParameter('kernel.debug')) {
-            $container->addCompilerPass(new FeatureFlagsPass());
             $container->addCompilerPass(new FeatureFlagsDebugPass());
             $container->addCompilerPass(new AddDebugLogProcessorPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, 2);
             $container->addCompilerPass(new UnusedTagsPass(), PassConfig::TYPE_AFTER_REMOVING);
