@@ -3013,9 +3013,13 @@ class FrameworkExtension extends Extension
 
         $container->registerAttributeForAutoconfiguration(AsStrategy::class,
             static function (ChildDefinition $definition, AsStrategy $attribute, \ReflectionClass|\ReflectionMethod $reflector): void {
+                $featureName = $attribute->feature;
+
                 if ($reflector instanceof \ReflectionClass) {
                     $className = $reflector->getName();
                     $method = $attribute->method;
+
+                    $featureName ??= $className;
                 } else {
                     $className = $reflector->getDeclaringClass()->getName();
                     if (null !== $attribute->method && $reflector->getName() !== $attribute->method) {
@@ -3023,10 +3027,11 @@ class FrameworkExtension extends Extension
                     }
 
                     $method = $reflector->getName();
+                    $featureName ??= "{$className}::{$method}";
                 }
 
                 $definition->addTag('feature_flags.self_feature_strategy', [
-                    'feature' => $attribute->feature ?? $className,
+                    'feature' => $featureName,
                     'description' => $attribute->description,
                     'method' => $method,
                 ]);
