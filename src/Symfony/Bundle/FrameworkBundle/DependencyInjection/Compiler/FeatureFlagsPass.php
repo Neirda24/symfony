@@ -16,6 +16,7 @@ use Symfony\Component\DependencyInjection\ChildDefinition;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
+use Symfony\Component\DependencyInjection\Exception\RuntimeException;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\FeatureFlags\Feature;
 use Symfony\Component\FeatureFlags\Strategy\CallbackStrategy;
@@ -35,6 +36,10 @@ final class FeatureFlagsPass implements CompilerPassInterface
         foreach ($container->findTaggedServiceIds('feature_flags.self_feature_strategy') as $serviceId => $tags) {
             $className = $this->getServiceClass($container, $serviceId);
             $r = $container->getReflectionClass($className);
+
+            if (null === $r) {
+                throw new RuntimeException(sprintf('Invalid service "%s": class "%s" does not exist.', $serviceId, $className));
+            }
 
             foreach ($tags as $tag) {
                 $method = $tag['method'] ?? '__invoke';
@@ -77,7 +82,7 @@ final class FeatureFlagsPass implements CompilerPassInterface
         $lazyInMemoryProvider->setArgument('$features', $features);
     }
 
-    private function getServiceClass(ContainerBuilder $container, string $serviceId): string
+    private function getServiceClass(ContainerBuilder $container, string $serviceId): string|null
     {
         while (true) {
             $definition = $container->findDefinition($serviceId);
