@@ -25,7 +25,6 @@ use Psr\Http\Client\ClientInterface;
 use Psr\Log\LoggerAwareInterface;
 use Symfony\Bridge\Monolog\Processor\DebugProcessor;
 use Symfony\Bridge\Twig\Extension\CsrfExtension;
-use Symfony\Bundle\FeatureFlagsBundle\Strategy\CustomStrategy;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Bundle\FrameworkBundle\Routing\RouteLoaderInterface;
 use Symfony\Bundle\FullStack;
@@ -71,6 +70,7 @@ use Symfony\Component\Dotenv\Command\DebugCommand;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\ExpressionLanguage\ExpressionLanguage;
+use Symfony\Component\FeatureFlags\Attribute\AsStrategy;
 use Symfony\Component\FeatureFlags\Feature;
 use Symfony\Component\FeatureFlags\FeatureChecker;
 use Symfony\Component\FeatureFlags\Provider\ProviderInterface;
@@ -3010,6 +3010,33 @@ class FrameworkExtension extends Extension
         $container->registerForAutoconfiguration(StrategyInterface::class)
             ->addTag('feature_flags.feature_strategy')
         ;
+
+        $container->registerAttributeForAutoconfiguration(AsStrategy::class,
+            static function (ChildDefinition $definition, AsStrategy $attribute, \ReflectionClass|\ReflectionMethod $reflector): void {
+                $featureName = $attribute->feature;
+
+                if ($reflector instanceof \ReflectionClass) {
+                    $className = $reflector->getName();
+                    $method = $attribute->method;
+
+                    $featureName ??= $className;
+                } else {
+                    $className = $reflector->getDeclaringClass()->getName();
+                    if (null !== $attribute->method && $reflector->getName() !== $attribute->method) {
+                        throw new \LogicException(sprintf('Using the #[%s(method: %s)] attribute on a method is not valid. Either remove the method value or move this to the top of the class (%s)', AsStrategy::class, $attribute->method, $className));
+                    }
+
+                    $method = $reflector->getName();
+                    $featureName ??= "{$className}::{$method}";
+                }
+
+                $definition->addTag('feature_flags.self_feature_strategy', [
+                    'feature' => $featureName,
+                    'description' => $attribute->description,
+                    'method' => $method,
+                ]);
+            }
+        );
 
         foreach ($config['strategies'] as $strategyName => $strategyConfig) {
             ['type' => $type, 'with' => $with] = $strategyConfig;

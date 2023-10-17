@@ -50,6 +50,7 @@ class UnusedTagsPass implements CompilerPassInterface
         'event_dispatcher.dispatcher',
         'feature_flags.feature_provider',
         'feature_flags.feature_strategy',
+        'feature_flags.self_feature_strategy',
         'form.type',
         'form.type_extension',
         'form.type_guesser',

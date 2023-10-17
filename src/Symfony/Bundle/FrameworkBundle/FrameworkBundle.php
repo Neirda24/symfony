@@ -18,6 +18,7 @@ use Symfony\Bundle\FrameworkBundle\DependencyInjection\Compiler\ContainerBuilder
 use Symfony\Bundle\FrameworkBundle\DependencyInjection\Compiler\DataCollectorTranslatorPass;
 use Symfony\Bundle\FrameworkBundle\DependencyInjection\Compiler\ErrorLoggerCompilerPass;
 use Symfony\Bundle\FrameworkBundle\DependencyInjection\Compiler\FeatureFlagsDebugPass;
+use Symfony\Bundle\FrameworkBundle\DependencyInjection\Compiler\FeatureFlagsPass;
 use Symfony\Bundle\FrameworkBundle\DependencyInjection\Compiler\LoggingTranslatorPass;
 use Symfony\Bundle\FrameworkBundle\DependencyInjection\Compiler\ProfilerPass;
 use Symfony\Bundle\FrameworkBundle\DependencyInjection\Compiler\RemoveUnusedSessionMarshallingHandlerPass;
@@ -176,6 +177,7 @@ class FrameworkBundle extends Bundle
         $container->addCompilerPass(new RemoveUnusedSessionMarshallingHandlerPass());
         // must be registered after MonologBundle's LoggerChannelPass
         $container->addCompilerPass(new ErrorLoggerCompilerPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, -32);
+        $container->addCompilerPass(new FeatureFlagsPass());
 
         if ($container->getParameter('kernel.debug')) {
             $container->addCompilerPass(new FeatureFlagsDebugPass());
