@@ -35,6 +35,7 @@ use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 use Symfony\Component\Security\Core\Authorization\AccessDecisionManager;
 use Symfony\Component\Security\Core\Authorization\TraceableAccessDecisionManager;
 use Symfony\Component\Security\Core\Authorization\Voter\AuthenticatedVoter;
+use Symfony\Component\Security\Core\Authorization\Voter\CallableVoter;
 use Symfony\Component\Security\Core\Authorization\Voter\RoleVoter;
 use Symfony\Component\Security\Core\Authorization\Voter\TraceableVoter;
 use Symfony\Component\Security\Core\Authorization\Voter\Vote;
@@ -355,6 +356,31 @@ class SecurityDataCollectorTest extends TestCase
         $this->assertCount(1, $collector->getListeners());
         $collector->lateCollect();
         $this->assertSame(1, $listener->callCount);
+    }
+
+    public function testCollectShowsTheNameOfStringableVoters()
+    {
+        $voter = new CallableVoter(static fn () => true, [], ['view'], null, DummyVoter::class.'::vote');
+
+        $accessDecisionManager = $this->createStub(TraceableAccessDecisionManager::class);
+        $accessDecisionManager->method('getStrategy')->willReturn(MainConfiguration::STRATEGY_UNANIMOUS);
+        $accessDecisionManager->method('getVoters')->willReturn([$voter]);
+        $accessDecisionManager->method('getDecisionLog')->willReturn([[
+            'attributes' => ['view'],
+            'object' => new \stdClass(),
+            'result' => true,
+            'voterDetails' => [
+                ['voter' => $voter, 'attributes' => ['view'], 'vote' => VoterInterface::ACCESS_GRANTED],
+            ],
+        ]]);
+
+        $dataCollector = new SecurityDataCollector(null, null, null, $accessDecisionManager, null, null);
+
+        $dataCollector->collect(new Request(), new Response());
+        $dataCollector->lateCollect();
+
+        $this->assertSame([DummyVoter::class.'::vote'], $dataCollector->getVoters()->getValue(true));
+        $this->assertSame(DummyVoter::class.'::vote', $dataCollector->getAccessDecisionLog()->getValue(true)[0]['voter_details'][0]['class']);
     }
 
     public function testCollectCollectsDecisionLogWhenStrategyIsAffirmative()
