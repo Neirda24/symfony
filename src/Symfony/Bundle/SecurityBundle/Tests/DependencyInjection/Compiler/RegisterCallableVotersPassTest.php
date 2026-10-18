@@ -34,10 +34,12 @@ class RegisterCallableVotersPassTest extends TestCase
     {
         $container = new ContainerBuilder();
         $container->register('rules', RegisterCallableVotersPassTest_Rules::class)
-            ->addTag('security.callable_voter', ['attributes' => ['POST_VIEW', 'POST_EDIT'], 'method' => 'post', 'priority' => 10])
-            ->addTag('security.callable_voter', ['attributes' => ['POST_EDIT'], 'method' => 'nullablePost', 'priority' => 0]);
+            ->addTag('.security.callable_voter', ['attributes' => ['POST_VIEW', 'POST_EDIT'], 'method' => 'post', 'priority' => 10])
+            ->addTag('.security.callable_voter', ['attributes' => ['POST_EDIT'], 'method' => 'nullablePost', 'priority' => 0]);
 
         (new RegisterCallableVotersPass())->process($container);
+
+        $this->assertFalse($container->getDefinition('rules')->hasTag('.security.callable_voter'));
 
         $voter = $container->getDefinition('.security.voter.rules.post');
         $this->assertSame(CallableVoter::class, $voter->getClass());
@@ -63,7 +65,7 @@ class RegisterCallableVotersPassTest extends TestCase
     {
         $container = new ContainerBuilder();
         $container->register('rules', RegisterCallableVotersPassTest_Rules::class)
-            ->addTag('security.callable_voter', ['attributes' => ['POST_EDIT'], 'method' => 'published', 'priority' => 0]);
+            ->addTag('.security.callable_voter', ['attributes' => ['POST_EDIT'], 'method' => 'published', 'priority' => 0]);
 
         (new RegisterCallableVotersPass())->process($container);
         $container->getDefinition('.security.voter.rules.published')->setPublic(true);
@@ -88,7 +90,7 @@ class RegisterCallableVotersPassTest extends TestCase
     {
         $container = new ContainerBuilder();
         $container->register('rules', RegisterCallableVotersPassTest_Rules::class)
-            ->addTag('security.callable_voter', ['attributes' => ['POST_EDIT'], 'method' => 'staticRule', 'priority' => 0]);
+            ->addTag('.security.callable_voter', ['attributes' => ['POST_EDIT'], 'method' => 'staticRule', 'priority' => 0]);
 
         (new RegisterCallableVotersPass())->process($container);
 
@@ -109,7 +111,7 @@ class RegisterCallableVotersPassTest extends TestCase
         $container = new ContainerBuilder();
         $container->register('rules', RegisterCallableVotersPassTest_Rules::class)
             ->addTag('security.voter')
-            ->addTag('security.callable_voter', ['attributes' => ['POST_EDIT'], 'method' => 'post', 'priority' => 0]);
+            ->addTag('.security.callable_voter', ['attributes' => ['POST_EDIT'], 'method' => 'post', 'priority' => 0]);
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage(\sprintf('Cannot use "#[AsVoter]" on "%s": the service "rules" is already a voter. To set its priority, use "#[AsTaggedItem]".', RegisterCallableVotersPassTest_Rules::class));
@@ -154,8 +156,8 @@ class RegisterCallableVotersPassTest extends TestCase
     {
         $container = new ContainerBuilder();
         $container->register('rule', RegisterCallableVotersPassTest_InvokableRule::class)
-            ->addTag('security.callable_voter', ['attributes' => ['POST_VIEW'], 'method' => '__invoke', 'priority' => 0])
-            ->addTag('security.callable_voter', ['attributes' => ['POST_EDIT'], 'method' => '__invoke', 'priority' => 0]);
+            ->addTag('.security.callable_voter', ['attributes' => ['POST_VIEW'], 'method' => '__invoke', 'priority' => 0])
+            ->addTag('.security.callable_voter', ['attributes' => ['POST_EDIT'], 'method' => '__invoke', 'priority' => 0]);
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage(\sprintf('The voter "%s::__invoke()" is declared twice. Mark it with "#[AsVoter]" once: on a class, the attribute declares the "__invoke()" method.', RegisterCallableVotersPassTest_InvokableRule::class));
@@ -177,7 +179,7 @@ class RegisterCallableVotersPassTest extends TestCase
     {
         $container = new ContainerBuilder();
         $container->register('rules', RegisterCallableVotersPassTest_Rules::class)
-            ->addTag('security.callable_voter', $tag + ['method' => 'post', 'priority' => 0]);
+            ->addTag('.security.callable_voter', $tag + ['method' => 'post', 'priority' => 0]);
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage(\sprintf('The "attributes" of the voter "%s::post()" must be a non-empty string or a non-empty list of non-empty strings.', RegisterCallableVotersPassTest_Rules::class));
@@ -189,7 +191,7 @@ class RegisterCallableVotersPassTest extends TestCase
     {
         $container = new ContainerBuilder();
         $container->register('rule', RegisterCallableVotersPassTest_InvokableRule::class)
-            ->addTag('security.callable_voter', ['attributes' => ['POST_EDIT'], 'method' => '__invoke', 'priority' => 0]);
+            ->addTag('.security.callable_voter', ['attributes' => ['POST_EDIT'], 'method' => '__invoke', 'priority' => 0]);
 
         (new RegisterCallableVotersPass())->process($container);
 
@@ -249,10 +251,10 @@ class RegisterCallableVotersPassTest extends TestCase
     {
         $container = new ContainerBuilder();
         $container->register('rules', RegisterCallableVotersPassTest_CommentRules::class)
-            ->addTag('security.callable_voter', ['attributes' => ['POST_EDIT'], 'method' => 'selfType', 'priority' => 0])
-            ->addTag('security.callable_voter', ['attributes' => ['POST_EDIT'], 'method' => 'parentType', 'priority' => 0])
-            ->addTag('security.callable_voter', ['attributes' => ['POST_EDIT'], 'method' => 'traitSelfType', 'priority' => 0])
-            ->addTag('security.callable_voter', ['attributes' => ['POST_EDIT'], 'method' => 'traitParentType', 'priority' => 0]);
+            ->addTag('.security.callable_voter', ['attributes' => ['POST_EDIT'], 'method' => 'selfType', 'priority' => 0])
+            ->addTag('.security.callable_voter', ['attributes' => ['POST_EDIT'], 'method' => 'parentType', 'priority' => 0])
+            ->addTag('.security.callable_voter', ['attributes' => ['POST_EDIT'], 'method' => 'traitSelfType', 'priority' => 0])
+            ->addTag('.security.callable_voter', ['attributes' => ['POST_EDIT'], 'method' => 'traitParentType', 'priority' => 0]);
 
         (new RegisterCallableVotersPass())->process($container);
 
@@ -295,7 +297,7 @@ class RegisterCallableVotersPassTest extends TestCase
     {
         $container = new ContainerBuilder();
         $container->register('rules', RegisterCallableVotersPassTest_Rules::class)
-            ->addTag('security.callable_voter', ['attributes' => ['POST_EDIT'], 'method' => $method, 'priority' => 0]);
+            ->addTag('.security.callable_voter', ['attributes' => ['POST_EDIT'], 'method' => $method, 'priority' => 0]);
 
         (new RegisterCallableVotersPass())->process($container);
 

@@ -22,6 +22,7 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 class UnusedTagsPass implements CompilerPassInterface
 {
     private const KNOWN_TAGS = [
+        '.security.callable_voter',
         '.workflow.attribute',
         'asset_mapper.compiler',
         'assets.package',
@@ -117,7 +118,6 @@ class UnusedTagsPass implements CompilerPassInterface
         'security.access_token_handler.oidc.encryption_algorithm',
         'security.access_token_handler.oidc.signature_algorithm',
         'security.authenticator.login_linker',
-        'security.callable_voter',
         'security.expression_language_provider',
         'security.remember_me_handler',
         'security.voter',

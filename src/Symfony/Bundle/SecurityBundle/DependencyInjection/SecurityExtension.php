@@ -231,7 +231,7 @@ class SecurityExtension extends Extension implements PrependExtensionInterface
             ->addTag('security.voter');
 
         $container->registerAttributeForAutoconfiguration(AsVoter::class, static function (ChildDefinition $definition, AsVoter $attribute, \ReflectionClass|\ReflectionMethod $reflector) {
-            $definition->addTag('security.callable_voter', [
+            $definition->addTag('.security.callable_voter', [
                 'attributes' => (array) $attribute->attributes,
                 'method' => $reflector instanceof \ReflectionMethod ? $reflector->name : '__invoke',
                 'priority' => $attribute->priority,

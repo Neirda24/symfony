@@ -41,8 +41,9 @@ final class RegisterCallableVotersPass implements CompilerPassInterface
             }
         }
 
-        foreach ($container->findTaggedServiceIds('security.callable_voter', true) as $id => $tags) {
+        foreach ($container->findTaggedServiceIds('.security.callable_voter', true) as $id => $tags) {
             $definition = $container->getDefinition($id);
+            $definition->clearTag('.security.callable_voter');
             $class = $container->getParameterBag()->resolveValue($definition->getClass());
 
             if (!$r = $container->getReflectionClass($class)) {
