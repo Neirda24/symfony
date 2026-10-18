@@ -166,6 +166,8 @@ class RegisterCallableVotersPassTest extends TestCase
         yield 'no attributes' => [[]];
         yield 'an empty list' => [['attributes' => []]];
         yield 'an attribute that is not a string' => [['attributes' => ['POST_EDIT', 1]]];
+        yield 'an empty attribute' => [['attributes' => ['POST_EDIT', '']]];
+        yield 'a map' => [['attributes' => ['edit' => 'POST_EDIT']]];
     }
 
     #[DataProvider('provideInvalidAttributes')]
@@ -176,7 +178,7 @@ class RegisterCallableVotersPassTest extends TestCase
             ->addTag('security.callable_voter', $tag + ['method' => 'post', 'priority' => 0]);
 
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage(\sprintf('The "attributes" of the voter "%s::post()" must be a string or a non-empty list of strings.', RegisterCallableVotersPassTest_Rules::class));
+        $this->expectExceptionMessage(\sprintf('The "attributes" of the voter "%s::post()" must be a non-empty string or a non-empty list of non-empty strings.', RegisterCallableVotersPassTest_Rules::class));
 
         (new RegisterCallableVotersPass())->process($container);
     }

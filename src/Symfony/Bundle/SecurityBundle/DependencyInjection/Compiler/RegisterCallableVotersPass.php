@@ -61,8 +61,8 @@ final class RegisterCallableVotersPass implements CompilerPassInterface
 
                 $attributes = (array) ($tag['attributes'] ?? []);
 
-                if (!$attributes || $attributes !== array_filter($attributes, \is_string(...))) {
-                    throw new InvalidArgumentException(\sprintf('The "attributes" of the voter "%s::%s()" must be a string or a non-empty list of strings.', $r->name, $method));
+                if (!$attributes || !array_is_list($attributes) || $attributes !== array_filter($attributes, static fn ($attribute) => \is_string($attribute) && '' !== $attribute)) {
+                    throw new InvalidArgumentException(\sprintf('The "attributes" of the voter "%s::%s()" must be a non-empty string or a non-empty list of non-empty strings.', $r->name, $method));
                 }
 
                 if ($container->has($voterId = '.security.voter.'.$id.'.'.$method)) {
