@@ -13,10 +13,21 @@ namespace Symfony\Component\Security\Core\Tests\Authorization\Voter;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Security\Core\Authentication\AuthenticationTrustResolver;
 use Symfony\Component\Security\Core\Authentication\Token\NullToken;
+use Symfony\Component\Security\Core\Authentication\Token\RememberMeToken;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorage;
+use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
+use Symfony\Component\Security\Core\Authorization\AccessDecisionManager;
+use Symfony\Component\Security\Core\Authorization\AuthorizationChecker;
+use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
+use Symfony\Component\Security\Core\Authorization\Voter\AuthenticatedVoter;
 use Symfony\Component\Security\Core\Authorization\Voter\CallableVoter;
+use Symfony\Component\Security\Core\Authorization\Voter\RoleVoter;
 use Symfony\Component\Security\Core\Authorization\Voter\Vote;
 use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
+use Symfony\Component\Security\Core\User\InMemoryUser;
 
 class CallableVoterTest extends TestCase
 {
@@ -128,9 +139,51 @@ class CallableVoterTest extends TestCase
         $this->assertSame(['A published post cannot be edited.'], $vote->reasons);
     }
 
+    public function testCallableChecksOtherAttributesApartAndReportsTheirReasons()
+    {
+        $token = new UsernamePasswordToken(new InMemoryUser('mod', null, ['ROLE_MODERATOR']), 'main', ['ROLE_MODERATOR']);
+        $voter = new CallableVoter(static fn (AuthorizationCheckerInterface $authorizationChecker) => $authorizationChecker->isGranted('ROLE_MODERATOR') ?: null, ['authorization_checker'], ['POST_DELETE'], null, 'rule', self::createAuthorizationChecker($token));
+
+        $vote = new Vote();
+
+        $this->assertSame(VoterInterface::ACCESS_GRANTED, $voter->vote($token, null, ['POST_DELETE'], $vote));
+        $this->assertSame(['The user has ROLE_MODERATOR.'], $vote->reasons);
+    }
+
+    public function testCallableDenyingAfterACheckAReAuthenticationCouldGrantRequestsOne()
+    {
+        $token = new RememberMeToken(new InMemoryUser('alice', null, ['ROLE_USER']), 'main');
+        $voter = new CallableVoter(static fn (AuthorizationCheckerInterface $authorizationChecker) => $authorizationChecker->isGranted('IS_AUTHENTICATED_FULLY') ? null : false, ['authorization_checker'], ['POST_EDIT'], null, 'rule', self::createAuthorizationChecker($token));
+
+        $vote = new Vote();
+
+        $this->assertSame(VoterInterface::ACCESS_DENIED, $voter->vote($token, null, ['POST_EDIT'], $vote));
+        $this->assertSame(['The user is not fully authenticated.'], $vote->reasons);
+        $this->assertSame('POST_EDIT', $vote->reAuthenticationAttribute);
+    }
+
+    public function testAbstainingCallableLeavesTheReasonsOfItsChecksOut()
+    {
+        $token = new UsernamePasswordToken(new InMemoryUser('mod', null, ['ROLE_MODERATOR']), 'main', ['ROLE_MODERATOR']);
+        $voter = new CallableVoter(static fn (AuthorizationCheckerInterface $authorizationChecker) => $authorizationChecker->isGranted('ROLE_MODERATOR') ? null : false, ['authorization_checker'], ['POST_DELETE'], null, 'rule', self::createAuthorizationChecker($token));
+
+        $vote = new Vote();
+
+        $this->assertSame(VoterInterface::ACCESS_ABSTAIN, $voter->vote($token, null, ['POST_DELETE'], $vote));
+        $this->assertSame([], $vote->reasons);
+    }
+
     public function testVoterIsNamedAfterTheCallable()
     {
         $this->assertSame('App\PostRules::canEdit', (string) new CallableVoter(static fn () => true, [], ['EDIT'], null, 'App\PostRules::canEdit'));
+    }
+
+    private static function createAuthorizationChecker(TokenInterface $token): AuthorizationCheckerInterface
+    {
+        $tokenStorage = new TokenStorage();
+        $tokenStorage->setToken($token);
+
+        return new AuthorizationChecker($tokenStorage, new AccessDecisionManager([new RoleVoter(), new AuthenticatedVoter(new AuthenticationTrustResolver())]));
     }
 }
 

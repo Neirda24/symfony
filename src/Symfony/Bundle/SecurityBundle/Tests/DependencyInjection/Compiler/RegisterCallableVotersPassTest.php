@@ -14,6 +14,7 @@ namespace Symfony\Bundle\SecurityBundle\Tests\DependencyInjection\Compiler;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Bundle\SecurityBundle\DependencyInjection\Compiler\RegisterCallableVotersPass;
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
@@ -22,6 +23,7 @@ use Symfony\Component\Security\Core\Attribute\AsVoter;
 use Symfony\Component\Security\Core\Authentication\Token\NullToken;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
+use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\CallableVoter;
 use Symfony\Component\Security\Core\Authorization\Voter\Vote;
 use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
@@ -207,6 +209,13 @@ class RegisterCallableVotersPassTest extends TestCase
         yield 'the vote before the subject' => ['voteThenPost', ['vote', 'subject'], [RegisterCallableVotersPassTest_Post::class]];
         yield 'everything' => ['everything', ['attribute', 'subject', 'token', 'vote'], [RegisterCallableVotersPassTest_Post::class]];
         yield 'an untyped attribute and subject' => ['untypedAttribute', ['attribute', 'subject'], null];
+        yield 'the authorization checker before the subject' => ['authorizationChecker', ['authorization_checker', 'subject'], [RegisterCallableVotersPassTest_Post::class]];
+    }
+
+    public function testPassesTheAuthorizationCheckerOnlyToTheVotersThatAskForIt()
+    {
+        $this->assertEquals(new Reference('security.authorization_checker'), $this->processMethod('authorizationChecker')->getArgument(5));
+        $this->assertCount(5, $this->processMethod('post')->getArguments());
     }
 
     #[DataProvider('provideParameters')]
@@ -261,6 +270,8 @@ class RegisterCallableVotersPassTest extends TestCase
         yield 'a vote that cannot be null' => ['requiredVote', 'The parameter "$vote" of the voter "%s::requiredVote()" must allow null'];
         yield 'a token implementation' => ['tokenImplementation', 'The parameter "$token" of the voter "%s::tokenImplementation()" receives the token: type it as "TokenInterface" and check the class of the token in the method.'];
         yield 'a vote subclass' => ['voteSubclass', 'The parameter "$vote" of the voter "%s::voteSubclass()" receives the vote: type it as "?Vote".'];
+        yield 'an authorization checker implementation' => ['securityHelper', 'The parameter "$security" of the voter "%s::securityHelper()" receives the authorization checker: type it as "AuthorizationCheckerInterface".'];
+        yield 'two authorization checkers' => ['twoAuthorizationCheckers', 'The parameters "$authorizationChecker" and "$otherChecker" of the voter "%s::twoAuthorizationCheckers()" both receive the authorization checker: declare it once.'];
         yield 'an attribute that is not a string' => ['intAttribute', 'The parameter "$attribute" of the voter "%s::intAttribute()" receives the security attribute'];
         yield 'a variadic parameter' => ['variadic', 'The parameter "$posts" of the voter "%s::variadic()" cannot be variadic.'];
         yield 'a missing method' => ['missing', 'Invalid voter "rules": method "%s::missing()" does not exist or is not public.'];
@@ -424,6 +435,21 @@ class RegisterCallableVotersPassTest_Rules
     }
 
     public function twoTokens(TokenInterface $token, TokenInterface $impersonator): bool
+    {
+        return true;
+    }
+
+    public function authorizationChecker(AuthorizationCheckerInterface $authorizationChecker, RegisterCallableVotersPassTest_Post $post): bool
+    {
+        return true;
+    }
+
+    public function securityHelper(Security $security): bool
+    {
+        return true;
+    }
+
+    public function twoAuthorizationCheckers(AuthorizationCheckerInterface $authorizationChecker, AuthorizationCheckerInterface $otherChecker): bool
     {
         return true;
     }

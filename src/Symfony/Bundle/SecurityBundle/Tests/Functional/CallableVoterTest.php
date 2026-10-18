@@ -16,6 +16,7 @@ use Symfony\Component\Security\Core\Attribute\AsVoter;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 use Symfony\Component\Security\Core\Authorization\AccessDecision;
+use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\Vote;
 use Symfony\Component\Security\Core\User\InMemoryUser;
 
@@ -46,6 +47,14 @@ class CallableVoterTest extends AbstractWebTestCase
         $this->assertSame('Access Denied. A published post cannot be edited.', $accessDecision->getMessage());
 
         $this->assertTrue($security->isGranted('POST_VIEW', new CallableVoterTestPost('bob', published: true)), 'A static method votes too.');
+        $this->assertFalse($security->isGranted('POST_DELETE', new CallableVoterTestPost('alice')));
+
+        $moderator = new InMemoryUser('mod', 'test', ['ROLE_MODERATOR']);
+        $container->get('functional_test.security.token_storage')->setToken(new UsernamePasswordToken($moderator, 'main', $moderator->getRoles()));
+
+        $accessDecision = new AccessDecision();
+        $this->assertTrue($security->isGranted('POST_DELETE', new CallableVoterTestPost('alice'), $accessDecision));
+        $this->assertSame(['The user has ROLE_MODERATOR.'], $accessDecision->votes[0]->reasons);
         $this->assertSame(1, CallableVoterTestPostRules::$instances);
     }
 }
@@ -84,6 +93,12 @@ class CallableVoterTestPostRules
         $vote?->addReason('A published post cannot be edited.');
 
         return false;
+    }
+
+    #[AsVoter('POST_DELETE')]
+    public function isModerator(AuthorizationCheckerInterface $authorizationChecker): ?true
+    {
+        return $authorizationChecker->isGranted('ROLE_MODERATOR') ?: null;
     }
 
     #[AsVoter('POST_VIEW')]

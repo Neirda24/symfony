@@ -18,6 +18,7 @@ use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\Security\Core\Attribute\AsVoter;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\CallableVoter;
 use Symfony\Component\Security\Core\Authorization\Voter\Vote;
 use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
@@ -82,14 +83,20 @@ final class RegisterCallableVotersPass implements CompilerPassInterface
                     $callable->setArguments([[new Reference($id), $method]])->setLazy(true);
                 }
 
+                $voterArguments = [
+                    $callable,
+                    $arguments,
+                    $attributes,
+                    $subject ? self::getSubjectTypes($reflector, $subject) : null,
+                    $r->name.'::'.$method,
+                ];
+
+                if (\in_array('authorization_checker', $arguments, true)) {
+                    $voterArguments[] = new Reference('security.authorization_checker');
+                }
+
                 $container->register($voterId, CallableVoter::class)
-                    ->setArguments([
-                        $callable,
-                        $arguments,
-                        $attributes,
-                        $subject ? self::getSubjectTypes($reflector, $subject) : null,
-                        $r->name.'::'.$method,
-                    ])
+                    ->setArguments($voterArguments)
                     ->addTag('security.voter', ['priority' => $tag['priority'] ?? 0]);
             }
         }
@@ -136,7 +143,7 @@ final class RegisterCallableVotersPass implements CompilerPassInterface
     }
 
     /**
-     * @return array{list<'attribute'|'subject'|'token'|'vote'>, \ReflectionParameter|null}
+     * @return array{list<'attribute'|'authorization_checker'|'subject'|'token'|'vote'>, \ReflectionParameter|null}
      */
     private static function resolveArguments(\ReflectionMethod $method): array
     {
@@ -160,6 +167,8 @@ final class RegisterCallableVotersPass implements CompilerPassInterface
                 $role = 'attribute';
             } elseif (TokenInterface::class === $typeName) {
                 $role = 'token';
+            } elseif (AuthorizationCheckerInterface::class === $typeName) {
+                $role = 'authorization_checker';
             } elseif (Vote::class === $typeName) {
                 if (!$type->allowsNull()) {
                     throw new InvalidArgumentException(\sprintf('The parameter "$%s" of the voter "%s::%s()" must allow null: type it as "?Vote", as a voter can be called without a vote.', $parameter->name, $method->class, $method->name));
@@ -168,6 +177,8 @@ final class RegisterCallableVotersPass implements CompilerPassInterface
                 $role = 'vote';
             } elseif ($className && is_a($className, TokenInterface::class, true)) {
                 throw new InvalidArgumentException(\sprintf('The parameter "$%s" of the voter "%s::%s()" receives the token: type it as "TokenInterface" and check the class of the token in the method.', $parameter->name, $method->class, $method->name));
+            } elseif ($className && is_a($className, AuthorizationCheckerInterface::class, true)) {
+                throw new InvalidArgumentException(\sprintf('The parameter "$%s" of the voter "%s::%s()" receives the authorization checker: type it as "AuthorizationCheckerInterface".', $parameter->name, $method->class, $method->name));
             } elseif ($className && is_a($className, Vote::class, true)) {
                 throw new InvalidArgumentException(\sprintf('The parameter "$%s" of the voter "%s::%s()" receives the vote: type it as "?Vote".', $parameter->name, $method->class, $method->name));
             } else {
@@ -175,11 +186,11 @@ final class RegisterCallableVotersPass implements CompilerPassInterface
             }
 
             if ('subject' === $role && isset($parameters['subject'])) {
-                throw new InvalidArgumentException(\sprintf('Cannot tell which of the parameters "$%s" and "$%s" of the voter "%s::%s()" is the subject: only the token, the vote and the "$attribute" can be declared next to it.', $parameters['subject']->name, $parameter->name, $method->class, $method->name));
+                throw new InvalidArgumentException(\sprintf('Cannot tell which of the parameters "$%s" and "$%s" of the voter "%s::%s()" is the subject: only the token, the vote, the authorization checker and the "$attribute" can be declared next to it.', $parameters['subject']->name, $parameter->name, $method->class, $method->name));
             }
 
             if (isset($parameters[$role])) {
-                throw new InvalidArgumentException(\sprintf('The parameters "$%s" and "$%s" of the voter "%s::%s()" both receive the %s: declare it once.', $parameters[$role]->name, $parameter->name, $method->class, $method->name, $role));
+                throw new InvalidArgumentException(\sprintf('The parameters "$%s" and "$%s" of the voter "%s::%s()" both receive the %s: declare it once.', $parameters[$role]->name, $parameter->name, $method->class, $method->name, str_replace('_', ' ', $role)));
             }
 
             $parameters[$role] = $parameter;

@@ -13,6 +13,8 @@ namespace Symfony\Component\Security\Core\Authorization\Voter;
 
 use Symfony\Component\Security\Core\Attribute\AsVoter;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
+use Symfony\Component\Security\Core\Authorization\NestedAuthorizationChecker;
 
 /**
  * Votes with the callable marked with {@see AsVoter}.
@@ -22,10 +24,11 @@ use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 final class CallableVoter implements CacheableVoterInterface, \Stringable
 {
     /**
-     * @param list<'attribute'|'subject'|'token'|'vote'> $arguments    What the callable receives, parameter by parameter
-     * @param list<string>                               $attributes   The security attributes the voter votes on
-     * @param list<string>|null                          $subjectTypes The types of subject the voter votes on, null for all of them
-     * @param string                                     $name         The name of the callable, shown by the profiler
+     * @param list<'attribute'|'authorization_checker'|'subject'|'token'|'vote'> $arguments            What the callable receives, parameter by parameter
+     * @param list<string>                                                       $attributes           The security attributes the voter votes on
+     * @param list<string>|null                                                  $subjectTypes         The types of subject the voter votes on, null for all of them
+     * @param string                                                             $name                 The name of the callable, shown by the profiler
+     * @param AuthorizationCheckerInterface|null                                 $authorizationChecker The authorization checker the callable checks other attributes with
      */
     public function __construct(
         private \Closure $callable,
@@ -33,6 +36,7 @@ final class CallableVoter implements CacheableVoterInterface, \Stringable
         private array $attributes,
         private ?array $subjectTypes,
         private string $name,
+        private ?AuthorizationCheckerInterface $authorizationChecker = null,
     ) {
     }
 
@@ -91,24 +95,36 @@ final class CallableVoter implements CacheableVoterInterface, \Stringable
      */
     private function call(string $attribute, mixed $subject, TokenInterface $token, ?Vote $vote): int
     {
+        $authorizationChecker = null;
         $arguments = [];
         foreach ($this->arguments as $argument) {
             $arguments[] = match ($argument) {
                 'attribute' => $attribute,
+                'authorization_checker' => $authorizationChecker = new NestedAuthorizationChecker($this->authorizationChecker ?? throw new \LogicException(\sprintf('"%s()" checks other attributes, but its voter has no authorization checker.', $this->name))),
                 'subject' => $subject,
                 'token' => $token,
                 'vote' => $vote,
             };
         }
 
-        $result = ($this->callable)(...$arguments);
+        $returned = ($this->callable)(...$arguments);
 
-        return match ($result) {
+        $result = match ($returned) {
             true => self::ACCESS_GRANTED,
             false => self::ACCESS_DENIED,
             null => self::ACCESS_ABSTAIN,
-            self::ACCESS_GRANTED, self::ACCESS_DENIED, self::ACCESS_ABSTAIN => $result,
-            default => throw new \LogicException(\sprintf('"%s()" must return a boolean, null or one of the "%s::ACCESS_*" constants, "%s" returned.', $this->name, VoterInterface::class, get_debug_type($result))),
+            self::ACCESS_GRANTED, self::ACCESS_DENIED, self::ACCESS_ABSTAIN => $returned,
+            default => throw new \LogicException(\sprintf('"%s()" must return a boolean, null or one of the "%s::ACCESS_*" constants, "%s" returned.', $this->name, VoterInterface::class, get_debug_type($returned))),
         };
+
+        if ($vote && $authorizationChecker && self::ACCESS_ABSTAIN !== $result) {
+            $authorizationChecker->addReasons($vote, self::ACCESS_GRANTED === $result);
+
+            if (self::ACCESS_DENIED === $result && null !== $authorizationChecker->reAuthenticationAttribute) {
+                $vote->requestReAuthentication($attribute);
+            }
+        }
+
+        return $result;
     }
 }
