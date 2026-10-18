@@ -62,7 +62,7 @@ final class RegisterCallableVotersPass implements CompilerPassInterface
 
                 $attributes = (array) ($tag['attributes'] ?? []);
 
-                if (!$attributes || !array_is_list($attributes) || $attributes !== array_filter($attributes, static fn ($attribute) => \is_string($attribute) && '' !== $attribute)) {
+                if (!$attributes || !array_is_list($attributes) || array_any($attributes, static fn ($attribute) => !\is_string($attribute) || '' === $attribute)) {
                     throw new InvalidArgumentException(\sprintf('The "attributes" of the voter "%s::%s()" must be a non-empty string or a non-empty list of non-empty strings.', $r->name, $method));
                 }
 
@@ -219,7 +219,7 @@ final class RegisterCallableVotersPass implements CompilerPassInterface
                 return null;
             }
 
-            // PHP < 8.5 does not resolve self and parent in reflection
+            // reflection leaves self and parent unresolved on PHP 8.4, and in trait methods on PHP 8.5 too
             $types[] = match ($namedType->getName()) {
                 'self' => $method->getDeclaringClass()->name,
                 'parent' => $method->getDeclaringClass()->getParentClass()->name,
