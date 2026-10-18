@@ -18,6 +18,7 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
 use Symfony\Component\DependencyInjection\Reference;
+use Symfony\Component\Security\Core\Attribute\AsVoter;
 use Symfony\Component\Security\Core\Authentication\Token\NullToken;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
@@ -110,6 +111,39 @@ class RegisterCallableVotersPassTest extends TestCase
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage(\sprintf('Cannot use "#[AsVoter]" on "%s": the service "rules" is already a voter. To set its priority, use "#[AsTaggedItem]".', RegisterCallableVotersPassTest_Rules::class));
+
+        (new RegisterCallableVotersPass())->process($container);
+    }
+
+    public static function provideAttributesItCannotHonor(): iterable
+    {
+        yield 'a protected method' => [RegisterCallableVotersPassTest_ProtectedRule::class, \sprintf('The "#[AsVoter]" attribute cannot be used on the non-public method "%s::isArchived()".', RegisterCallableVotersPassTest_ProtectedRule::class)];
+        yield 'a private method of a parent class' => [RegisterCallableVotersPassTest_ChildOfPrivateRule::class, \sprintf('The "#[AsVoter]" attribute cannot be used on the non-public method "%s::isHidden()".', RegisterCallableVotersPassTest_PrivateRule::class)];
+        yield 'an interface method' => [RegisterCallableVotersPassTest_LockedRule::class, \sprintf('The "#[AsVoter]" attribute cannot be used on the interface method "%s::isLocked()": declare it on its implementation "%s::isLocked()" instead.', RegisterCallableVotersPassTest_LockRule::class, RegisterCallableVotersPassTest_LockedRule::class)];
+        yield 'an abstract method' => [RegisterCallableVotersPassTest_ArchivedRule::class, \sprintf('The "#[AsVoter]" attribute cannot be used on the abstract method "%s::isArchived()": declare it on its implementation "%s::isArchived()" instead.', RegisterCallableVotersPassTest_AbstractRule::class, RegisterCallableVotersPassTest_ArchivedRule::class)];
+    }
+
+    #[DataProvider('provideAttributesItCannotHonor')]
+    public function testThrowsOnAnAttributeItCannotHonor(string $class, string $message)
+    {
+        $container = new ContainerBuilder();
+        $container->register('rules', $class)->setAutoconfigured(true);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage($message);
+
+        (new RegisterCallableVotersPass())->process($container);
+    }
+
+    public function testIgnoresTheAttributesOfServicesThatDoNotReadThem()
+    {
+        $container = new ContainerBuilder();
+        $container->register('not_autoconfigured', RegisterCallableVotersPassTest_ProtectedRule::class);
+        $container->register('ignoring_attributes', RegisterCallableVotersPassTest_ProtectedRule::class)->setAutoconfigured(true)->addTag('container.ignore_attributes');
+        $container->register('abstract', RegisterCallableVotersPassTest_ProtectedRule::class)->setAutoconfigured(true)->setAbstract(true);
+        $container->register('redeclared', RegisterCallableVotersPassTest_RedeclaredRule::class)->setAutoconfigured(true);
+
+        $this->expectNotToPerformAssertions();
 
         (new RegisterCallableVotersPass())->process($container);
     }
@@ -420,5 +454,64 @@ class RegisterCallableVotersPassTest_InvokableRule
     public function __invoke(RegisterCallableVotersPassTest_Post $post, TokenInterface $token): bool
     {
         return true;
+    }
+}
+
+class RegisterCallableVotersPassTest_ProtectedRule
+{
+    #[AsVoter('POST_EDIT')]
+    protected function isArchived(): ?false
+    {
+        return false;
+    }
+}
+
+class RegisterCallableVotersPassTest_PrivateRule
+{
+    #[AsVoter('POST_EDIT')]
+    private function isHidden(): ?false
+    {
+        return false;
+    }
+}
+
+class RegisterCallableVotersPassTest_ChildOfPrivateRule extends RegisterCallableVotersPassTest_PrivateRule
+{
+}
+
+interface RegisterCallableVotersPassTest_LockRule
+{
+    #[AsVoter('POST_EDIT')]
+    public function isLocked(): ?false;
+}
+
+class RegisterCallableVotersPassTest_LockedRule implements RegisterCallableVotersPassTest_LockRule
+{
+    public function isLocked(): ?false
+    {
+        return false;
+    }
+}
+
+class RegisterCallableVotersPassTest_RedeclaredRule implements RegisterCallableVotersPassTest_LockRule
+{
+    #[AsVoter('POST_EDIT')]
+    public function isLocked(): ?false
+    {
+        return false;
+    }
+}
+
+abstract class RegisterCallableVotersPassTest_AbstractRule
+{
+    #[AsVoter('POST_EDIT')]
+    abstract public function isArchived(): ?false;
+}
+
+class RegisterCallableVotersPassTest_ArchivedRule extends RegisterCallableVotersPassTest_AbstractRule
+{
+    public function isArchived(): ?false
+    {
+        return false;
     }
 }

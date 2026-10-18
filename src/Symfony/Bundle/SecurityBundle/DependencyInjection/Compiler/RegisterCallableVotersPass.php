@@ -16,6 +16,7 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
 use Symfony\Component\DependencyInjection\Reference;
+use Symfony\Component\Security\Core\Attribute\AsVoter;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\CallableVoter;
 use Symfony\Component\Security\Core\Authorization\Voter\Vote;
@@ -33,6 +34,12 @@ final class RegisterCallableVotersPass implements CompilerPassInterface
 
     public function process(ContainerBuilder $container): void
     {
+        foreach ($container->getDefinitions() as $definition) {
+            if ($definition->isAutoconfigured() && !$definition->isAbstract() && !$definition->hasTag('container.ignore_attributes') && $r = $container->getReflectionClass($definition->getClass(), false)) {
+                self::checkAttributesCanBeHonored($r);
+            }
+        }
+
         foreach ($container->findTaggedServiceIds('security.callable_voter', true) as $id => $tags) {
             $definition = $container->getDefinition($id);
             $class = $container->getParameterBag()->resolveValue($definition->getClass());
@@ -84,6 +91,33 @@ final class RegisterCallableVotersPass implements CompilerPassInterface
                         $r->name.'::'.$method,
                     ])
                     ->addTag('security.voter', ['priority' => $tag['priority'] ?? 0]);
+            }
+        }
+    }
+
+    /**
+     * Autoconfiguration reads #[AsVoter] on public methods only, so the attribute anywhere else would be silently ignored.
+     */
+    private static function checkAttributesCanBeHonored(\ReflectionClass $class): void
+    {
+        $types = $class->getInterfaces();
+        for ($type = $class; $type; $type = $type->getParentClass()) {
+            $types[] = $type;
+        }
+
+        foreach ($types as $type) {
+            foreach ($type->getMethods() as $method) {
+                if ($method->class !== $type->name || !$method->getAttributes(AsVoter::class, \ReflectionAttribute::IS_INSTANCEOF)) {
+                    continue;
+                }
+
+                if (!$method->isPublic()) {
+                    throw new InvalidArgumentException(\sprintf('The "#[AsVoter]" attribute cannot be used on the non-public method "%s::%s()".', $method->class, $method->name));
+                }
+
+                if ($method->isAbstract() && !$class->getMethod($method->name)->getAttributes(AsVoter::class, \ReflectionAttribute::IS_INSTANCEOF)) {
+                    throw new InvalidArgumentException(\sprintf('The "#[AsVoter]" attribute cannot be used on the %s method "%s::%s()": declare it on its implementation "%s::%s()" instead.', $type->isInterface() ? 'interface' : 'abstract', $method->class, $method->name, $class->name, $method->name));
+                }
             }
         }
     }
