@@ -234,6 +234,19 @@ class RegisterCallableVotersPassTest extends TestCase
         $this->assertSame($expected, $this->processMethod($method)->getArgument(3));
     }
 
+    public function testResolvesSelfAndParentSubjectTypes()
+    {
+        $container = new ContainerBuilder();
+        $container->register('rules', RegisterCallableVotersPassTest_CommentRules::class)
+            ->addTag('security.callable_voter', ['attributes' => ['POST_EDIT'], 'method' => 'selfType', 'priority' => 0])
+            ->addTag('security.callable_voter', ['attributes' => ['POST_EDIT'], 'method' => 'parentType', 'priority' => 0]);
+
+        (new RegisterCallableVotersPass())->process($container);
+
+        $this->assertSame([RegisterCallableVotersPassTest_CommentRules::class, 'null'], $container->getDefinition('.security.voter.rules.selfType')->getArgument(3));
+        $this->assertSame([RegisterCallableVotersPassTest_Comment::class], $container->getDefinition('.security.voter.rules.parentType')->getArgument(3));
+    }
+
     public static function provideInvalidSignatures(): iterable
     {
         yield 'an intersection' => ['intersection', 'Cannot deduce the subjects voted on by "%s::intersection()" from the type of its parameter "$subject"'];
@@ -513,5 +526,18 @@ class RegisterCallableVotersPassTest_ArchivedRule extends RegisterCallableVoters
     public function isArchived(): ?false
     {
         return false;
+    }
+}
+
+class RegisterCallableVotersPassTest_CommentRules extends RegisterCallableVotersPassTest_Comment
+{
+    public function selfType(?self $subject): ?true
+    {
+        return true;
+    }
+
+    public function parentType(parent $subject): ?true
+    {
+        return true;
     }
 }

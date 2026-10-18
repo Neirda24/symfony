@@ -208,7 +208,12 @@ final class RegisterCallableVotersPass implements CompilerPassInterface
                 return null;
             }
 
-            $types[] = $namedType->getName();
+            // PHP < 8.5 does not resolve self and parent in reflection
+            $types[] = match ($namedType->getName()) {
+                'self' => $method->getDeclaringClass()->name,
+                'parent' => $method->getDeclaringClass()->getParentClass()->name,
+                default => $namedType->getName(),
+            };
 
             if ($namedType->allowsNull() && 'null' !== $namedType->getName()) {
                 $types[] = 'null';
