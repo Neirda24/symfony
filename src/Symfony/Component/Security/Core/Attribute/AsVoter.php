@@ -19,7 +19,7 @@ final class AsVoter
 {
     /**
      * @param string|list<string> $attributes The security attributes the voter votes on
-     * @param int                 $priority   The priority of the voter
+     * @param int                 $priority   Voters with a higher priority vote first
      */
     public function __construct(
         public string|array $attributes,

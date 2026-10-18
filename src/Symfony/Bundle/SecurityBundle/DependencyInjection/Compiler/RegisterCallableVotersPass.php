@@ -175,7 +175,7 @@ final class RegisterCallableVotersPass implements CompilerPassInterface
             }
 
             if ('subject' === $role && isset($parameters['subject'])) {
-                throw new InvalidArgumentException(\sprintf('Cannot tell which of the parameters "$%s" and "$%s" of the voter "%s::%s()" is the subject: only the token, the vote and the "$attribute" can come along with it.', $parameters['subject']->name, $parameter->name, $method->class, $method->name));
+                throw new InvalidArgumentException(\sprintf('Cannot tell which of the parameters "$%s" and "$%s" of the voter "%s::%s()" is the subject: only the token, the vote and the "$attribute" can be declared next to it.', $parameters['subject']->name, $parameter->name, $method->class, $method->name));
             }
 
             if (isset($parameters[$role])) {
