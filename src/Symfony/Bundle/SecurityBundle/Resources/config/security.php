@@ -163,6 +163,7 @@ return static function (ContainerConfigurator $container) {
                 service('security.authentication.trust_resolver'),
                 service('security.authorization_checker'),
                 service('security.role_hierarchy')->nullOnInvalid(),
+                service('security.access.decision_manager'),
             ])
             ->tag('security.voter', ['priority' => 245])
 
