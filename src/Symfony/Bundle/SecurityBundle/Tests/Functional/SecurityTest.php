@@ -15,6 +15,7 @@ use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Bundle\SecurityBundle\Security\FirewallConfig;
 use Symfony\Bundle\SecurityBundle\Tests\Functional\Bundle\SecuredPageBundle\Security\Core\User\ArrayUserProvider;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\ExpressionLanguage\Expression;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -45,6 +46,19 @@ class SecurityTest extends AbstractWebTestCase
         $request->server->set('REQUEST_URI', '/main/foo');
         $this->assertInstanceOf(FirewallConfig::class, $firewallConfig = $security->getFirewallConfig($request));
         $this->assertSame('main', $firewallConfig->getName());
+    }
+
+    public function testExpressionsDecideForTheTokenPassedToTheAccessDecisionManager()
+    {
+        $kernel = self::createKernel(['test_case' => 'SecurityHelper', 'root_config' => 'config.yml']);
+        $kernel->boot();
+        $container = $kernel->getContainer();
+
+        $admin = new UsernamePasswordToken(new InMemoryUser('admin', null, ['ROLE_ADMIN']), 'main', ['ROLE_ADMIN']);
+        $container->get('functional.test.security.token_storage')->setToken($admin);
+        $user = new UsernamePasswordToken(new InMemoryUser('user', null, ['ROLE_USER']), 'main', ['ROLE_USER']);
+
+        $this->assertFalse($container->get('functional.test.security.access_decision_manager')->decide($user, [new Expression('is_granted("ROLE_ADMIN")')]));
     }
 
     /**
